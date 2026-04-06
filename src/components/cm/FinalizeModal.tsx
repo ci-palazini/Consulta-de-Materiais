@@ -107,7 +107,7 @@ export function FinalizeModal({ cm, actorId, onClose }: FinalizeModalProps) {
                 Número da OV <span style={{ color: '#ef4444' }}>*</span>
               </label>
               <Input
-                placeholder="Ex: OV-2024-0001"
+                placeholder="Ex: OV00000000"
                 value={ovNumber}
                 onChange={(e) => setOvNumber(e.target.value)}
               />
