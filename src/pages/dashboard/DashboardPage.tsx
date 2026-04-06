@@ -3,7 +3,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { useCMs } from '@/hooks/useCMs'
 import { Button } from '@/components/ui'
 import { CMCard } from '@/components/cm/CMCard'
-import { Plus, Clock, CheckCircle2, Inbox, TrendingUp } from 'lucide-react'
+import { Plus, Clock, CheckCircle2, Inbox } from 'lucide-react'
 
 const STAT_COLORS = [
   { bg: '#eff6ff', icon: '#2563eb', border: '#bfdbfe' },
@@ -84,7 +84,6 @@ export function DashboardPage() {
     allCMs?.filter((cm) => cm.current_dept_id === profile?.department_id && cm.status === 'open') || []
 
   const totalOpen   = allCMs?.filter((cm) => cm.status === 'open').length || 0
-  const totalViable = allCMs?.filter((cm) => cm.status === 'closed_viable').length || 0
   const totalClosed = allCMs?.filter((cm) => cm.status !== 'open').length || 0
   const isVendas    = profile?.department?.slug === 'vendas'
   const firstName   = profile?.full_name?.split(' ')[0] || 'Usuário'
@@ -112,10 +111,9 @@ export function DashboardPage() {
       </div>
 
       {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: 14 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
         <StatCard label="Em Andamento"  value={totalOpen}              icon={Clock}        colorIdx={0} />
         <StatCard label="Finalizadas"   value={totalClosed}            icon={CheckCircle2} colorIdx={1} />
-        <StatCard label="Viáveis"       value={totalViable}            icon={TrendingUp}   colorIdx={2} />
         <StatCard label="Na Minha Fila" value={pendingInMyDept.length} icon={Inbox}        colorIdx={3} />
       </div>
 
