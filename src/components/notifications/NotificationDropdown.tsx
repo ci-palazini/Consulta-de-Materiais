@@ -252,9 +252,12 @@ export function NotificationDropdown() {
                   const config = TYPE_CONFIG[notification.type]
                   const Icon = config.icon
                   return (
-                    <button
+                    <div
                       key={notification.id}
                       onClick={() => handleNotificationClick(notification)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => e.key === 'Enter' && handleNotificationClick(notification)}
                       style={{
                         width: '100%',
                         display: 'flex',
@@ -262,16 +265,14 @@ export function NotificationDropdown() {
                         gap: '0.75rem',
                         padding: '0.875rem 1rem',
                         backgroundColor: notification.read ? 'transparent' : '#fafbff',
-                        border: 'none',
                         borderBottom: '1px solid #f8fafc',
                         cursor: 'pointer',
                         textAlign: 'left',
-                        fontFamily: 'inherit',
                         transition: 'background-color 0.1s',
                       }}
-                      onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.backgroundColor = '#f8fafc')}
+                      onMouseEnter={(e) => ((e.currentTarget as HTMLDivElement).style.backgroundColor = '#f8fafc')}
                       onMouseLeave={(e) =>
-                        ((e.currentTarget as HTMLButtonElement).style.backgroundColor = notification.read
+                        ((e.currentTarget as HTMLDivElement).style.backgroundColor = notification.read
                           ? 'transparent'
                           : '#fafbff')
                       }
@@ -355,7 +356,7 @@ export function NotificationDropdown() {
                           <Check size={14} />
                         </button>
                       )}
-                    </button>
+                    </div>
                   )
                 })}
               </div>
