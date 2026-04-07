@@ -41,15 +41,15 @@ function InfoField({ icon: Icon, label, value }: { icon: React.ElementType; labe
 }
 
 export function CMDetailPage() {
-  const { id }     = useParams<{ id: string }>()
+  const { number }  = useParams<{ number: string }>()
   const navigate   = useNavigate()
   const { profile } = useAuth()
-  const { data: cm, isLoading } = useCM(id || '')
+  const { data: cm, isLoading } = useCM(number || '')
 
   const [showForward,  setShowForward]  = useState(false)
   const [showFinalize, setShowFinalize] = useState(false)
 
-  if (!id) return <NotFound />
+  if (!number) return <NotFound />
 
   if (isLoading) {
     return (

@@ -23,7 +23,7 @@ export function CMCard({ cm }: { cm: CM }) {
     : { bg: '#f8fafc', color: '#475569' }
 
   return (
-    <Link to={`/cms/${cm.id}`} style={{ display: 'block', textDecoration: 'none' }}>
+    <Link to={`/cms/${cm.number}`} style={{ display: 'block', textDecoration: 'none' }}>
       <div
         style={{
           backgroundColor: '#fff',

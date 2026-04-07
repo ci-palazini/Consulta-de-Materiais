@@ -2,9 +2,9 @@ import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import type { CMWithSteps } from '@/types/domain'
 
-export function useCM(cmId: string) {
+export function useCM(cmNumber: string) {
   return useQuery({
-    queryKey: ['cm', cmId],
+    queryKey: ['cm', cmNumber],
     queryFn: async () => {
       const { data: cmData, error: cmError } = await supabase
         .from('cms')
@@ -13,7 +13,7 @@ export function useCM(cmId: string) {
           creator:profiles!created_by(id, full_name, email, department_id, role, avatar_initials),
           current_department:departments!current_dept_id(id, name, slug, display_order)
         `)
-        .eq('id', cmId)
+        .eq('number', cmNumber)
         .single()
 
       if (cmError) throw cmError
@@ -26,7 +26,7 @@ export function useCM(cmId: string) {
           from_department:departments!from_dept_id(id, name, slug, display_order),
           to_department:departments!to_dept_id(id, name, slug, display_order)
         `)
-        .eq('cm_id', cmId)
+        .eq('cm_id', cmData.id)
         .order('step_number', { ascending: true })
 
       if (stepsError) throw stepsError
@@ -36,6 +36,6 @@ export function useCM(cmId: string) {
         steps: stepsData,
       } as CMWithSteps
     },
-    enabled: !!cmId,
+    enabled: !!cmNumber,
   })
 }

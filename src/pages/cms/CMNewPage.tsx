@@ -56,7 +56,7 @@ export function CMNewPage() {
         })
       }
 
-      navigate(`/cms/${result.id}`)
+      navigate(`/cms/${result.number}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao criar CM')
     }

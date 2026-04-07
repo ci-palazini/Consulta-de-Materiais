@@ -65,7 +65,7 @@ export function NotificationDropdown() {
       markAsRead(notification.id)
     }
     setIsOpen(false)
-    navigate(`/cms/${notification.cm_id}`)
+    navigate(`/cms/${notification.cm?.number ?? notification.cm_id}`)
   }
 
   const unreadNotifications = notifications.filter((n) => !n.read)

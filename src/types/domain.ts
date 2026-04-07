@@ -66,6 +66,7 @@ export interface Notification {
   message: string
   read: boolean
   created_at: string
+  cm?: { number: string }
 }
 
 export interface CMAttachment {

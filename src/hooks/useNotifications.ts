@@ -15,7 +15,7 @@ export function useNotifications(userId: string | undefined) {
 
       const { data, error } = await supabase
         .from('notifications')
-        .select('*')
+        .select('*, cm:cms!cm_id(number)')
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
 
