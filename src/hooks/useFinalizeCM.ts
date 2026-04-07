@@ -28,7 +28,7 @@ export function useFinalizeCM() {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['cms'] })
-      queryClient.invalidateQueries({ queryKey: ['cm', variables.cmId] })
+      queryClient.invalidateQueries({ queryKey: ['cm'] })
       queryClient.invalidateQueries({ queryKey: ['notifications'] })
     },
   })

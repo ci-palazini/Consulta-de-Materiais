@@ -61,11 +61,12 @@ export function CMDetailPage() {
 
   if (!cm) return <NotFound />
 
-  const isOpen      = cm.status === 'open'
-  const isMyDept    = profile?.department_id === cm.current_dept_id
-  const isVendas    = profile?.department?.slug === 'vendas'
-  const canForward  = isOpen && isMyDept
-  const canFinalize = isOpen && isVendas
+  const isOpen          = cm.status === 'open'
+  const isMyDept        = profile?.department_id === cm.current_dept_id
+  const isVendas        = profile?.department?.slug === 'vendas'
+  const hasBeenForwarded = cm.steps?.some(s => s.action === 'forwarded') ?? false
+  const canForward       = isOpen && isMyDept
+  const canFinalize      = isOpen && isVendas && isMyDept && hasBeenForwarded
 
   const deptSlug  = cm.current_department?.slug || ''
   const deptStyle = DEPT_COLORS[deptSlug] || { bg: '#f8fafc', color: '#475569' }

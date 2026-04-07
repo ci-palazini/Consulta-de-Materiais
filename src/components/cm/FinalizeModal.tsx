@@ -23,7 +23,7 @@ export function FinalizeModal({ cm, actorId, onClose }: FinalizeModalProps) {
     e.preventDefault()
     setError(null)
     if (viability === null) { setError('Selecione a viabilidade da consulta'); return }
-    if (viability && !ovNumber.trim()) { setError('Número da OV é obrigatório para CMs viáveis'); return }
+    if (viability && !ovNumber.trim()) { setError('Número da Cotação é obrigatório para CMs viáveis'); return }
     if (!notes.trim()) { setError('Observações finais são obrigatórias'); return }
     try {
       await finalizeMutation.mutateAsync({ cmId: cm.id, viability, ovNumber: ovNumber.trim() || null, notes, actorId })
@@ -100,14 +100,13 @@ export function FinalizeModal({ cm, actorId, onClose }: FinalizeModalProps) {
             </div>
           </div>
 
-          {/* OV Number */}
+          {/* Cotação Number */}
           {viability === true && (
             <div>
               <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: '#374151', marginBottom: '0.375rem' }}>
-                Número da OV <span style={{ color: '#ef4444' }}>*</span>
+                Número da Cotação <span style={{ color: '#ef4444' }}>*</span>
               </label>
               <Input
-                placeholder="Ex: OV00000000"
                 value={ovNumber}
                 onChange={(e) => setOvNumber(e.target.value)}
               />
