@@ -6,6 +6,7 @@ interface CreateCMInput {
   title: string
   description: string
   createdBy: string
+  isNewItem: boolean
 }
 
 export function useCreateCM() {
@@ -17,6 +18,7 @@ export function useCreateCM() {
         p_title: input.title,
         p_description: input.description,
         p_actor_id: input.createdBy,
+        p_is_new_item: input.isNewItem,
       })
 
       if (error) throw error

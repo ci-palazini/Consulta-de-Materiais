@@ -4,7 +4,7 @@ import { useCreateCM } from '@/hooks/useCreateCM'
 import { useAuth } from '@/hooks/useAuth'
 import { useDepartments } from '@/hooks/useDepartments'
 import { Button, Input, Textarea } from '@/components/ui'
-import { AlertCircle, ArrowLeft, Info } from 'lucide-react'
+import { AlertCircle, ArrowLeft, Info, Sparkles, RefreshCw } from 'lucide-react'
 import { toast } from '@/store/toastStore'
 import { notifyCM } from '@/lib/msFormsNotifier'
 
@@ -15,6 +15,7 @@ export function CMNewPage() {
   const { data: departments = [] } = useDepartments()
 
   const [formData, setFormData] = useState({ title: '', description: '' })
+  const [isNewItem, setIsNewItem] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   if (profile?.department?.slug !== 'vendas') {
@@ -42,14 +43,16 @@ export function CMNewPage() {
         title: formData.title,
         description: formData.description,
         createdBy: profile!.id,
+        isNewItem,
       })
       toast.success('CM criada com sucesso!')
 
-      const engAplicacao = departments.find((d) => d.slug === 'eng_aplicacao')
-      if (engAplicacao) {
+      const targetSlug = isNewItem ? 'eng_aplicacao' : 'pricing'
+      const targetDept = departments.find((d) => d.slug === targetSlug)
+      if (targetDept) {
         notifyCM({
           cm:           result,
-          toDept:       engAplicacao,
+          toDept:       targetDept,
           fromDeptName: profile?.department?.name ?? 'Vendas',
           actorName:    profile?.full_name ?? 'Desconhecido',
           eventType:    'created',
@@ -118,11 +121,90 @@ export function CMNewPage() {
             />
           </div>
 
+          <div>
+            <p style={{ fontSize: 13, fontWeight: 500, color: '#374151', marginBottom: '0.5rem' }}>
+              Tipo de item <span style={{ color: '#ef4444' }}>*</span>
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.625rem' }}>
+              {/* Não — Item existente */}
+              <button
+                type="button"
+                onClick={() => setIsNewItem(false)}
+                style={{
+                  position: 'relative',
+                  display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '0.375rem',
+                  padding: '0.875rem 1rem', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
+                  transition: 'all 0.15s',
+                  border: isNewItem ? '1.5px solid #e2e8f0' : '1.5px solid #2563eb',
+                  backgroundColor: isNewItem ? '#f8fafc' : '#eff6ff',
+                  boxShadow: isNewItem ? 'none' : '0 0 0 3px rgba(37,99,235,0.08)',
+                }}
+              >
+                <div style={{
+                  width: 32, height: 32, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  backgroundColor: isNewItem ? '#f1f5f9' : '#dbeafe',
+                  transition: 'background-color 0.15s',
+                }}>
+                  <RefreshCw size={16} style={{ color: isNewItem ? '#94a3b8' : '#2563eb' }} />
+                </div>
+                <div>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: isNewItem ? '#64748b' : '#1d4ed8', margin: 0 }}>Item existente</p>
+                  <p style={{ fontSize: 11, color: isNewItem ? '#94a3b8' : '#3b82f6', margin: 0, marginTop: 2 }}>Vai para Pricing</p>
+                </div>
+                {!isNewItem && (
+                  <div style={{
+                    position: 'absolute', top: 8, right: 8,
+                    width: 16, height: 16, borderRadius: '50%',
+                    backgroundColor: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  </div>
+                )}
+              </button>
+
+              {/* Sim — Item novo */}
+              <button
+                type="button"
+                onClick={() => setIsNewItem(true)}
+                style={{
+                  position: 'relative',
+                  display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '0.375rem',
+                  padding: '0.875rem 1rem', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
+                  transition: 'all 0.15s',
+                  border: !isNewItem ? '1.5px solid #e2e8f0' : '1.5px solid #7c3aed',
+                  backgroundColor: !isNewItem ? '#f8fafc' : '#f5f3ff',
+                  boxShadow: !isNewItem ? 'none' : '0 0 0 3px rgba(124,58,237,0.08)',
+                }}
+              >
+                <div style={{
+                  width: 32, height: 32, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  backgroundColor: !isNewItem ? '#f1f5f9' : '#ede9fe',
+                  transition: 'background-color 0.15s',
+                }}>
+                  <Sparkles size={16} style={{ color: !isNewItem ? '#94a3b8' : '#7c3aed' }} />
+                </div>
+                <div>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: !isNewItem ? '#64748b' : '#6d28d9', margin: 0 }}>Item novo</p>
+                  <p style={{ fontSize: 11, color: !isNewItem ? '#94a3b8' : '#7c3aed', margin: 0, marginTop: 2 }}>Vai para Eng. Aplicação</p>
+                </div>
+                {isNewItem && (
+                  <div style={{
+                    position: 'absolute', top: 8, right: 8,
+                    width: 16, height: 16, borderRadius: '50%',
+                    backgroundColor: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  </div>
+                )}
+              </button>
+            </div>
+          </div>
+
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '0.625rem 0.875rem', borderRadius: 8, backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', fontSize: 13, color: '#1d4ed8' }}>
             <Info size={14} style={{ flexShrink: 0, marginTop: 1, color: '#3b82f6' }} />
             <span>
               Após criar, a CM será automaticamente encaminhada para{' '}
-              <strong>Eng. de Aplicação</strong> para análise inicial.
+              <strong>{isNewItem ? 'Eng. de Aplicação' : 'Pricing'}</strong> para análise inicial.
             </span>
           </div>
 

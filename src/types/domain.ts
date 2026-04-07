@@ -29,6 +29,7 @@ export interface CM {
   status: CMStatusType
   current_dept_id: string | null
   created_by: string
+  is_new_item: boolean
   viability: boolean | null
   ov_number: string | null
   finalization_notes: string | null
