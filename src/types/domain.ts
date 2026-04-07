@@ -68,6 +68,20 @@ export interface Notification {
   created_at: string
 }
 
+export interface CMAttachment {
+  id: string
+  cm_id: string
+  uploaded_by: string
+  file_name: string
+  file_size: number
+  mime_type: string
+  storage_path: string
+  created_at: string
+  // Denormalized
+  uploader?: Profile
+}
+
 export interface CMWithSteps extends CM {
   steps: CMStep[]
+  attachments?: CMAttachment[]
 }
