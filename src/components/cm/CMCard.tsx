@@ -6,8 +6,7 @@ import type { CM } from '@/types/domain'
 
 const DEPT_COLORS: Record<string, { bg: string; color: string }> = {
   vendas:         { bg: '#eff6ff', color: '#1d4ed8' },
-  eng_aplicacao:  { bg: '#f5f3ff', color: '#6d28d9' },
-  eng_produto:    { bg: '#eef2ff', color: '#4338ca' },
+  eng_projetos:   { bg: '#f5f3ff', color: '#6d28d9' },
   qualidade:      { bg: '#f0fdf4', color: '#15803d' },
   planejamento:   { bg: '#ecfeff', color: '#0e7490' },
   suprimentos:    { bg: '#fff7ed', color: '#c2410c' },

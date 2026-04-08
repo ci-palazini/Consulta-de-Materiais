@@ -1,22 +1,20 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 
-interface FinalizeCMInput {
+interface ApproveCMInput {
   cmId: string
   notes: string
   actorId: string
 }
 
-export function useFinalizeCM() {
+export function useApproveCM() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async (input: FinalizeCMInput) => {
-      const { data, error } = await supabase.rpc('finalize_cm', {
+    mutationFn: async (input: ApproveCMInput) => {
+      const { data, error } = await supabase.rpc('approve_cm', {
         p_cm_id:    input.cmId,
-        p_viable:   true,
-        p_reason:   null,
-        p_notes:    input.notes || null,
+        p_notes:    input.notes,
         p_actor_id: input.actorId,
       })
       if (error) throw error

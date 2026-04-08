@@ -14,7 +14,7 @@ export function useCreateCM() {
 
   return useMutation({
     mutationFn: async (input: CreateCMInput) => {
-      const { data: cmId, error } = await supabase.rpc('create_cm', {
+      const { data: rows, error } = await supabase.rpc('create_cm', {
         p_title: input.title,
         p_description: input.description,
         p_actor_id: input.createdBy,
@@ -23,13 +23,16 @@ export function useCreateCM() {
 
       if (error) throw error
 
+      const row = Array.isArray(rows) ? rows[0] : rows
+      if (!row?.id) throw new Error('Resposta inesperada da função create_cm')
+
       const { data: cm, error: fetchError } = await supabase
         .from('cms')
         .select('*')
-        .eq('id', cmId)
+        .eq('id', row.id)
         .single()
 
-      if (fetchError) return { id: cmId } as CM
+      if (fetchError) return row as CM
       return cm as CM
     },
     onSuccess: () => {

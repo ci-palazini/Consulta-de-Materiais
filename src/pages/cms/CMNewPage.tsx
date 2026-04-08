@@ -47,7 +47,7 @@ export function CMNewPage() {
       })
       toast.success('CM criada com sucesso!')
 
-      const targetSlug = isNewItem ? 'eng_aplicacao' : 'pricing'
+      const targetSlug = isNewItem ? 'eng_projetos' : 'pricing'
       const targetDept = departments.find((d) => d.slug === targetSlug)
       if (targetDept) {
         notifyCM({
@@ -185,7 +185,7 @@ export function CMNewPage() {
                 </div>
                 <div>
                   <p style={{ fontSize: 13, fontWeight: 600, color: !isNewItem ? '#64748b' : '#6d28d9', margin: 0 }}>Item novo</p>
-                  <p style={{ fontSize: 11, color: !isNewItem ? '#94a3b8' : '#7c3aed', margin: 0, marginTop: 2 }}>Vai para Eng. Aplicação</p>
+                  <p style={{ fontSize: 11, color: !isNewItem ? '#94a3b8' : '#7c3aed', margin: 0, marginTop: 2 }}>Vai para Eng. de Projetos</p>
                 </div>
                 {isNewItem && (
                   <div style={{
@@ -204,7 +204,7 @@ export function CMNewPage() {
             <Info size={14} style={{ flexShrink: 0, marginTop: 1, color: '#3b82f6' }} />
             <span>
               Após criar, a CM será automaticamente encaminhada para{' '}
-              <strong>{isNewItem ? 'Eng. de Aplicação' : 'Pricing'}</strong> para análise inicial.
+              <strong>{isNewItem ? 'Eng. de Projetos' : 'Pricing'}</strong> para análise inicial.
             </span>
           </div>
 

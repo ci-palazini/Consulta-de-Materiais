@@ -79,9 +79,11 @@ function LoadingGrid() {
 export function DashboardPage() {
   const { profile } = useAuth()
   const { data: allCMs, isLoading } = useCMs()
+  const { data: deptCMs } = useCMs(
+    profile?.department_id ? { departmentId: profile.department_id, status: 'open' } : undefined
+  )
 
-  const pendingInMyDept =
-    allCMs?.filter((cm) => cm.current_dept_id === profile?.department_id && cm.status === 'open') || []
+  const pendingInMyDept = deptCMs || []
 
   const totalOpen   = allCMs?.filter((cm) => cm.status === 'open').length || 0
   const totalClosed = allCMs?.filter((cm) => cm.status !== 'open').length || 0

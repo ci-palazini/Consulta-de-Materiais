@@ -1,30 +1,57 @@
 import { useState } from 'react'
-import { X, CheckSquare } from 'lucide-react'
+import { X, XCircle } from 'lucide-react'
 import { Button, Textarea } from '@/components/ui'
-import { useFinalizeCM } from '@/hooks/useFinalizeCM'
+import { useRefuseCM } from '@/hooks/useRefuseCM'
+import { useRefuseParallelBranch } from '@/hooks/useRefuseParallelBranch'
+import { useAuth } from '@/hooks/useAuth'
+import { useDepartments } from '@/hooks/useDepartments'
 import { toast } from '@/store/toastStore'
-import type { CM } from '@/types/domain'
+import { notifyCM } from '@/lib/msFormsNotifier'
+import type { CMWithSteps } from '@/types/domain'
 
-interface FinalizeModalProps {
-  cm: CM
+interface RefuseModalProps {
+  cm: CMWithSteps
   actorId: string
+  /** If true, calls refuse_parallel_branch instead of refuse_cm */
+  isParallel?: boolean
   onClose: () => void
 }
 
-export function FinalizeModal({ cm, actorId, onClose }: FinalizeModalProps) {
-  const finalizeMutation = useFinalizeCM()
+export function RefuseModal({ cm, actorId, isParallel = false, onClose }: RefuseModalProps) {
+  const refuseMutation        = useRefuseCM()
+  const refuseParallelMutation = useRefuseParallelBranch()
+  const { profile }                = useAuth()
+  const { data: departments = [] } = useDepartments()
+
+  const mutation = isParallel ? refuseParallelMutation : refuseMutation
+
   const [notes, setNotes] = useState('')
   const [error, setError] = useState<string | null>(null)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
+    if (!notes.trim()) { setError('O motivo da recusa é obrigatório'); return }
     try {
-      await finalizeMutation.mutateAsync({ cmId: cm.id, notes, actorId })
-      toast.success('CM finalizada com sucesso!')
+      await mutation.mutateAsync({ cmId: cm.id, notes, actorId })
+
+      // Notify creator's department
+      const creatorDept = departments.find(d => d.id === cm.creator?.department_id)
+      if (!isParallel && creatorDept) {
+        notifyCM({
+          cm,
+          toDept:       creatorDept,
+          fromDeptName: profile?.department?.name ?? '',
+          actorName:    profile?.full_name ?? '',
+          notes,
+          eventType:    'refused',
+        })
+      }
+
+      toast.success('CM recusada')
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao finalizar')
+      setError(err instanceof Error ? err.message : 'Erro ao recusar')
     }
   }
 
@@ -34,7 +61,7 @@ export function FinalizeModal({ cm, actorId, onClose }: FinalizeModalProps) {
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem 1.5rem', borderBottom: '1px solid #e2e8f0' }}>
           <div>
-            <h3 style={{ fontSize: 15, fontWeight: 600, color: '#0f172a' }}>Finalizar CM</h3>
+            <h3 style={{ fontSize: 15, fontWeight: 600, color: '#dc2626' }}>Recusar CM</h3>
             <p style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>{cm.number} · {cm.title}</p>
           </div>
           <button
@@ -55,29 +82,29 @@ export function FinalizeModal({ cm, actorId, onClose }: FinalizeModalProps) {
             </div>
           )}
 
-          <p style={{ fontSize: 13.5, color: '#374151', lineHeight: 1.6 }}>
-            Confirma a finalização da CM <strong>{cm.number}</strong>? Todos os envolvidos serão notificados.
-          </p>
-
           <div>
             <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: '#374151', marginBottom: '0.375rem' }}>
-              Observações <span style={{ fontSize: 12, color: '#94a3b8', fontWeight: 400 }}>(opcional)</span>
+              Motivo da recusa <span style={{ color: '#ef4444' }}>*</span>
             </label>
             <Textarea
-              placeholder="Alguma observação final para registrar..."
+              placeholder="Descreva o motivo pelo qual esta consulta não pode prosseguir..."
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              rows={3}
+              rows={4}
             />
           </div>
 
+          <div style={{ padding: '0.625rem 0.875rem', borderRadius: 8, backgroundColor: '#fef2f2', border: '1px solid #fecaca', fontSize: 12.5, color: '#991b1b' }}>
+            Esta ação é irreversível. A CM será encerrada como <strong>não viável</strong> e todos os envolvidos serão notificados.
+          </div>
+
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, paddingTop: 4 }}>
-            <Button type="button" variant="secondary" onClick={onClose} disabled={finalizeMutation.isPending}>
+            <Button type="button" variant="secondary" onClick={onClose} disabled={mutation.isPending}>
               Cancelar
             </Button>
-            <Button type="submit" variant="success" isLoading={finalizeMutation.isPending}>
-              <CheckSquare size={14} />
-              Finalizar CM
+            <Button type="submit" variant="danger" isLoading={mutation.isPending}>
+              <XCircle size={14} />
+              Recusar CM
             </Button>
           </div>
         </form>

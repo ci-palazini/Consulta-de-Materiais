@@ -1,4 +1,4 @@
-import type { CMStatusType, CMActionType, UserRoleType } from './enums'
+import type { CMStatusType, CMActionType, CMWorkflowStageType, UserRoleType } from './enums'
 
 export interface Department {
   id: string
@@ -30,6 +30,9 @@ export interface CM {
   current_dept_id: string | null
   created_by: string
   is_new_item: boolean
+  workflow_stage: CMWorkflowStageType
+  contested_step_id: string | null
+  contest_reason: string | null
   viability: boolean | null
   ov_number: string | null
   finalization_notes: string | null
@@ -47,7 +50,7 @@ export interface CMStep {
   cm_id: string
   step_number: number
   from_dept_id: string | null
-  to_dept_id: string
+  to_dept_id: string | null
   action: CMActionType
   actor_id: string
   notes: string | null
@@ -58,12 +61,25 @@ export interface CMStep {
   actor?: Profile
 }
 
+export interface CMParallelBranch {
+  id: string
+  cm_id: string
+  dept_id: string
+  branch_type: 'new_item_parallel' | 'existing_parallel'
+  status: 'pending' | 'approved' | 'refused'
+  step_id: string | null
+  created_at: string
+  resolved_at: string | null
+  // Denormalized
+  department?: Department
+}
+
 export interface Notification {
   id: string
   user_id: string
   cm_id: string
   cm_step_id: string | null
-  type: 'cm_assigned' | 'cm_finalized' | 'cm_returned'
+  type: 'cm_assigned' | 'cm_finalized' | 'cm_returned' | 'cm_refused' | 'cm_contested' | 'cm_contest_response'
   message: string
   read: boolean
   created_at: string
@@ -86,4 +102,5 @@ export interface CMAttachment {
 export interface CMWithSteps extends CM {
   steps: CMStep[]
   attachments?: CMAttachment[]
+  parallel_branches?: CMParallelBranch[]
 }

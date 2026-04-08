@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Bell, Check, CheckCheck, Clock, ArrowRight, FileCheck } from 'lucide-react'
+import { Bell, Check, CheckCheck, Clock, ArrowRight, FileCheck, XCircle, AlertTriangle, MessageSquare } from 'lucide-react'
 import { useNotifications } from '@/hooks/useNotifications'
 import { useNotificationStore } from '@/store/notificationStore'
 import { useAuth } from '@/hooks/useAuth'
@@ -7,9 +7,12 @@ import { useNavigate } from 'react-router-dom'
 import type { Notification } from '@/types/domain'
 
 const TYPE_CONFIG: Record<Notification['type'], { icon: React.ElementType; bg: string; color: string }> = {
-  cm_assigned:  { icon: ArrowRight,  bg: '#eff6ff', color: '#1d4ed8' },
-  cm_returned:  { icon: ArrowRight,  bg: '#fff7ed', color: '#c2410c' },
-  cm_finalized: { icon: FileCheck,   bg: '#f0fdf4', color: '#15803d' },
+  cm_assigned:        { icon: ArrowRight,    bg: '#eff6ff', color: '#1d4ed8' },
+  cm_returned:        { icon: ArrowRight,    bg: '#fff7ed', color: '#c2410c' },
+  cm_finalized:       { icon: FileCheck,     bg: '#f0fdf4', color: '#15803d' },
+  cm_refused:         { icon: XCircle,       bg: '#fef2f2', color: '#b91c1c' },
+  cm_contested:       { icon: AlertTriangle, bg: '#fffbeb', color: '#b45309' },
+  cm_contest_response:{ icon: MessageSquare, bg: '#f5f3ff', color: '#6d28d9' },
 }
 
 function formatTimeAgo(dateStr: string): string {

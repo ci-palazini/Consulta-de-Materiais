@@ -8,8 +8,7 @@ export function cn(...inputs: ClassValue[]) {
 // Department color map by slug
 export const DEPT_COLORS: Record<string, string> = {
   vendas: 'bg-blue-500 text-white',
-  eng_aplicacao: 'bg-purple-500 text-white',
-  eng_produto: 'bg-indigo-500 text-white',
+  eng_projetos: 'bg-purple-500 text-white',
   qualidade: 'bg-green-500 text-white',
   planejamento: 'bg-cyan-500 text-white',
   suprimentos: 'bg-orange-500 text-white',
@@ -20,8 +19,7 @@ export const DEPT_COLORS: Record<string, string> = {
 
 export const DEPT_COLORS_LIGHT: Record<string, string> = {
   vendas: 'bg-blue-50 text-blue-700',
-  eng_aplicacao: 'bg-purple-50 text-purple-700',
-  eng_produto: 'bg-indigo-50 text-indigo-700',
+  eng_projetos: 'bg-purple-50 text-purple-700',
   qualidade: 'bg-green-50 text-green-700',
   planejamento: 'bg-cyan-50 text-cyan-700',
   suprimentos: 'bg-orange-50 text-orange-700',

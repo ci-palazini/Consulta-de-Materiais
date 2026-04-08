@@ -31,9 +31,16 @@ export function useCM(cmNumber: string) {
 
       if (stepsError) throw stepsError
 
+      const { data: branchesData } = await supabase
+        .from('cm_parallel_branches')
+        .select(`*, department:departments!dept_id(id, name, slug, display_order)`)
+        .eq('cm_id', cmData.id)
+        .order('created_at', { ascending: true })
+
       return {
         ...cmData,
         steps: stepsData,
+        parallel_branches: branchesData ?? [],
       } as CMWithSteps
     },
     enabled: !!cmNumber,

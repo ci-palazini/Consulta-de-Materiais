@@ -7,17 +7,26 @@ export interface NotifyCMPayload {
   fromDeptName: string
   actorName: string
   notes?: string
-  eventType: 'created' | 'forwarded'
+  eventType: 'created' | 'forwarded' | 'approved' | 'refused' | 'dispatched_parallel' | 'contested' | 'contest_response'
 }
 
 function buildBodyHtml(payload: NotifyCMPayload): string {
   const { cm, toDept, fromDeptName, actorName, notes, eventType } = payload
 
-  const isCreated   = eventType === 'created'
-  const accentColor = isCreated ? '#16a34a' : '#2563eb'
-  const tagBg       = isCreated ? '#dcfce7' : '#dbeafe'
-  const tagColor    = isCreated ? '#15803d' : '#1d4ed8'
-  const tagLabel    = isCreated ? 'Nova CM' : 'CM Encaminhada'
+  const colorMap: Record<string, { accent: string; bg: string; color: string; label: string }> = {
+    created:           { accent: '#16a34a', bg: '#dcfce7', color: '#15803d', label: 'Nova CM' },
+    approved:          { accent: '#2563eb', bg: '#dbeafe', color: '#1d4ed8', label: 'CM Aprovada' },
+    forwarded:         { accent: '#2563eb', bg: '#dbeafe', color: '#1d4ed8', label: 'CM Encaminhada' },
+    refused:           { accent: '#dc2626', bg: '#fee2e2', color: '#b91c1c', label: 'CM Recusada' },
+    dispatched_parallel: { accent: '#7c3aed', bg: '#ede9fe', color: '#6d28d9', label: 'Análise Paralela' },
+    contested:         { accent: '#ea580c', bg: '#ffedd5', color: '#c2410c', label: 'Etapa Contestada' },
+    contest_response:  { accent: '#0891b2', bg: '#cffafe', color: '#0e7490', label: 'Resposta à Contestação' },
+  }
+  const c = colorMap[eventType] ?? colorMap.forwarded
+  const accentColor = c.accent
+  const tagBg       = c.bg
+  const tagColor    = c.color
+  const tagLabel    = c.label
 
   const notesBlock = notes?.trim()
     ? `<div style="margin-top:20px;padding:14px 16px;background:#fafafa;border-left:3px solid #e2e8f0;border-radius:0 6px 6px 0;">
@@ -95,10 +104,17 @@ function buildBodyHtml(payload: NotifyCMPayload): string {
  */
 export async function notifyCM(payload: NotifyCMPayload): Promise<void> {
   try {
-    const eventLabel =
-      payload.eventType === 'created'
-        ? `[Nova CM] ${payload.cm.number}: ${payload.cm.title}`
-        : `[CM Encaminhada] ${payload.cm.number}: ${payload.cm.title} → ${payload.toDept.name}`
+    const prefixMap: Record<string, string> = {
+      created:            'Nova CM',
+      approved:           'CM Aprovada',
+      forwarded:          'CM Encaminhada',
+      refused:            'CM Recusada',
+      dispatched_parallel:'Análise Paralela',
+      contested:          'Etapa Contestada',
+      contest_response:   'Resposta à Contestação',
+    }
+    const prefix = prefixMap[payload.eventType] ?? 'CM'
+    const eventLabel = `[${prefix}] ${payload.cm.number}: ${payload.cm.title} → ${payload.toDept.name}`
 
     const body = buildBodyHtml(payload)
 

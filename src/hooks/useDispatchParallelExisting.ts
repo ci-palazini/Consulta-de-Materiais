@@ -1,22 +1,22 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 
-interface FinalizeCMInput {
+interface DispatchParallelExistingInput {
   cmId: string
+  deptIds: string[]
   notes: string
   actorId: string
 }
 
-export function useFinalizeCM() {
+export function useDispatchParallelExisting() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async (input: FinalizeCMInput) => {
-      const { data, error } = await supabase.rpc('finalize_cm', {
+    mutationFn: async (input: DispatchParallelExistingInput) => {
+      const { data, error } = await supabase.rpc('dispatch_parallel_existing', {
         p_cm_id:    input.cmId,
-        p_viable:   true,
-        p_reason:   null,
-        p_notes:    input.notes || null,
+        p_dept_ids: input.deptIds,
+        p_notes:    input.notes,
         p_actor_id: input.actorId,
       })
       if (error) throw error
