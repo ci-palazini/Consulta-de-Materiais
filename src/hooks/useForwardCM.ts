@@ -24,7 +24,7 @@ export function useForwardCM() {
 
       return data
     },
-    onSuccess: (_, variables) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cms'] })
       queryClient.invalidateQueries({ queryKey: ['cm'] })
       queryClient.invalidateQueries({ queryKey: ['notifications'] })
