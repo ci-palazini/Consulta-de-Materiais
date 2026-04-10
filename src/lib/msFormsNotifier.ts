@@ -76,6 +76,14 @@ function buildBodyHtml(payload: NotifyCMPayload): string {
       <!-- Observações (se houver) -->
       ${notesBlock}
 
+      <!-- Botão de acesso direto -->
+      <div style="margin-top:24px;text-align:center;">
+        <a href="https://ci-hiter-cms.vercel.app/cms/${cm.number}"
+           style="display:inline-block;background:${accentColor};color:#ffffff;font-size:14px;font-weight:600;text-decoration:none;padding:11px 28px;border-radius:8px;">
+          Abrir ${cm.number}
+        </a>
+      </div>
+
     </div>
 
     <!-- Footer do card -->

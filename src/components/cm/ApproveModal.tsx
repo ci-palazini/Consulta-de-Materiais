@@ -61,6 +61,16 @@ export function ApproveModal({ cm, actorId, isParallel = false, onClose }: Appro
           if (dept) notifyCM({ cm, toDept: dept, fromDeptName, actorName, eventType: 'approved' })
         })
       } else {
+        // Notify other pending branches so they know one branch already resolved
+        const pendingBranches = (cm.parallel_branches ?? []).filter(
+          b => b.status === 'pending' && b.dept_id !== profile?.department_id,
+        )
+        pendingBranches.forEach(b => {
+          if (b.department) {
+            notifyCM({ cm, toDept: b.department, fromDeptName, actorName, eventType: 'approved' })
+          }
+        })
+
         // Check if all branches are now approved and CM advanced to custos
         const { data: updatedCm } = await supabase
           .from('cms')

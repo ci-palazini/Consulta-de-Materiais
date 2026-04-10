@@ -6,10 +6,10 @@ import { useAuth } from '@/hooks/useAuth'
 import { useDepartments } from '@/hooks/useDepartments'
 import { toast } from '@/store/toastStore'
 import { notifyCM } from '@/lib/msFormsNotifier'
-import type { CM } from '@/types/domain'
+import type { CMWithSteps } from '@/types/domain'
 
 interface RespondToContestModalProps {
-  cm: CM
+  cm: CMWithSteps
   actorId: string
   onClose: () => void
 }
@@ -23,6 +23,10 @@ export function RespondToContestModal({ cm, actorId, onClose }: RespondToContest
   const [notes, setNotes]       = useState('')
   const [error, setError]       = useState<string | null>(null)
 
+  // Parallel branches that were cancelled by the refusal (all will be pending again after ok)
+  const parallelBranches = cm.parallel_branches ?? []
+  const isParallelContestation = parallelBranches.length > 0
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
@@ -30,16 +34,36 @@ export function RespondToContestModal({ cm, actorId, onClose }: RespondToContest
     try {
       await respondMutation.mutateAsync({ cmId: cm.id, response, notes, actorId })
 
+      const fromDeptName = profile?.department?.name ?? ''
+      const actorName    = profile?.full_name ?? ''
+
       // Email para Vendas
       const vendasDept = departments.find(d => d.slug === 'vendas')
       if (vendasDept) {
         notifyCM({
           cm,
           toDept:       vendasDept,
-          fromDeptName: profile?.department?.name ?? '',
-          actorName:    profile?.full_name ?? '',
+          fromDeptName,
+          actorName,
           notes,
           eventType:    'contest_response',
+        })
+      }
+
+      // Quando aceita e vinha de análise paralela, avisar todos os depts
+      // que a análise foi reaberta e precisam continuar trabalhando
+      if (response === 'ok' && isParallelContestation) {
+        parallelBranches.forEach(branch => {
+          if (branch.department) {
+            notifyCM({
+              cm,
+              toDept:       branch.department,
+              fromDeptName,
+              actorName,
+              notes: notes || undefined,
+              eventType:    'dispatched_parallel',
+            })
+          }
         })
       }
 

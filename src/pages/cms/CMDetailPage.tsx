@@ -152,7 +152,10 @@ export function CMDetailPage() {
     canApproveParallel: isOpen && !!myPendingBranch,
     canRefuseParallel:  isOpen && !!myPendingBranch,
     canFinalize:  isOpen && stage === CMWorkflowStage.VendasFinalize && mySlug === DepartmentSlug.Vendas,
-    canContest:   isOpen && (stage === CMWorkflowStage.VendasFinalize || stage === CMWorkflowStage.Refused) && mySlug === DepartmentSlug.Vendas,
+    canContest:   mySlug === DepartmentSlug.Vendas && (
+                    (isOpen && stage === CMWorkflowStage.VendasFinalize) ||
+                    stage === CMWorkflowStage.Refused
+                  ),
     canRespondToContest: isOpen && stage === CMWorkflowStage.Contestation && myDeptId === cm.current_dept_id,
   }
 
@@ -194,7 +197,7 @@ export function CMDetailPage() {
       </div>
 
       {/* Actions bar */}
-      {isOpen && hasAnyAction && (
+      {(isOpen || actions.canContest) && hasAnyAction && (
         <div style={{
           backgroundColor: '#f8fafc',
           border: '1px solid #e2e8f0',

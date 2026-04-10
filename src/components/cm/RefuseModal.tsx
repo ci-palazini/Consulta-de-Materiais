@@ -35,16 +35,24 @@ export function RefuseModal({ cm, actorId, isParallel = false, onClose }: Refuse
     try {
       await mutation.mutateAsync({ cmId: cm.id, notes, actorId })
 
-      // Notify creator's department
+      const fromDeptName = profile?.department?.name ?? ''
+      const actorName    = profile?.full_name ?? ''
+
+      // Notify creator's dept regardless of parallel or not
       const creatorDept = departments.find(d => d.id === cm.creator?.department_id)
-      if (!isParallel && creatorDept) {
-        notifyCM({
-          cm,
-          toDept:       creatorDept,
-          fromDeptName: profile?.department?.name ?? '',
-          actorName:    profile?.full_name ?? '',
-          notes,
-          eventType:    'refused',
+      if (creatorDept) {
+        notifyCM({ cm, toDept: creatorDept, fromDeptName, actorName, notes, eventType: 'refused' })
+      }
+
+      // When parallel, notify other pending branches so they know not to continue
+      if (isParallel) {
+        const pendingBranches = (cm.parallel_branches ?? []).filter(
+          b => b.status === 'pending' && b.dept_id !== profile?.department_id,
+        )
+        pendingBranches.forEach(b => {
+          if (b.department) {
+            notifyCM({ cm, toDept: b.department, fromDeptName, actorName, notes, eventType: 'refused' })
+          }
         })
       }
 

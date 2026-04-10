@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { useDepartments } from '@/hooks/useDepartments'
 import { toast } from '@/store/toastStore'
 import { notifyCM } from '@/lib/msFormsNotifier'
+import { CMWorkflowStage } from '@/types/enums'
 import type { CMWithSteps, CMStep } from '@/types/domain'
 
 interface ContestModalProps {
@@ -14,20 +15,24 @@ interface ContestModalProps {
   onClose: () => void
 }
 
-const CONTESTABLE_ACTIONS = ['approved', 'contest_response', 'refused']
-
 export function ContestModal({ cm, actorId, onClose }: ContestModalProps) {
   const contestMutation            = useContestCM()
   const { profile }                = useAuth()
   const { data: departments = [] } = useDepartments()
 
-  const [selectedStepId, setSelectedStepId] = useState('')
+  // When the CM is refused, only the refused step itself is contestable.
+  // At vendas_finalize, all approved/contest_response steps are contestable.
+  const contestableSteps = (cm.steps ?? []).filter(s => {
+    if (!s.from_dept_id) return false
+    if (cm.workflow_stage === CMWorkflowStage.Refused) return s.action === 'refused'
+    return ['approved', 'contest_response'].includes(s.action)
+  })
+
+  const autoStep = contestableSteps.length === 1 ? contestableSteps[0] : null
+
+  const [selectedStepId, setSelectedStepId] = useState(autoStep?.id ?? '')
   const [reason, setReason]                 = useState('')
   const [error, setError]                   = useState<string | null>(null)
-
-  const contestableSteps = (cm.steps ?? []).filter(
-    s => CONTESTABLE_ACTIONS.includes(s.action) && s.from_dept_id !== null
-  )
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -95,6 +100,10 @@ export function ContestModal({ cm, actorId, onClose }: ContestModalProps) {
 
           {contestableSteps.length === 0 ? (
             <p style={{ fontSize: 13, color: '#64748b' }}>Nenhuma etapa disponível para contestação.</p>
+          ) : autoStep ? (
+            <div style={{ padding: '0.625rem 0.875rem', borderRadius: 8, backgroundColor: '#fef3c7', border: '1px solid #fcd34d', fontSize: 13, color: '#92400e' }}>
+              Contestando: <strong>{stepLabel(autoStep)}</strong>
+            </div>
           ) : (
             <div>
               <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: '#374151', marginBottom: '0.375rem' }}>
