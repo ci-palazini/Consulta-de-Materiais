@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { CMStatusBadge } from './CMStatusBadge'
 import { CMDurationBadge } from './CMDurationBadge'
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, Hash } from 'lucide-react'
 import type { CM } from '@/types/domain'
 
 const DEPT_COLORS: Record<string, { bg: string; color: string }> = {
@@ -48,7 +48,15 @@ export function CMCard({ cm }: { cm: CM }) {
           {/* Header */}
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ fontSize: 11, fontFamily: 'monospace', color: '#94a3b8', marginBottom: 3 }}>{cm.number}</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                <p style={{ fontSize: 11, fontFamily: 'monospace', color: '#94a3b8' }}>{cm.number}</p>
+                {cm.internal_id && (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 10.5, fontWeight: 600, fontFamily: 'monospace', color: '#7c3aed', backgroundColor: '#f5f3ff', padding: '1px 6px', borderRadius: 4 }}>
+                    <Hash size={9} />
+                    {cm.internal_id}
+                  </span>
+                )}
+              </div>
               <h3 style={{
                 fontSize: 13.5,
                 fontWeight: 600,

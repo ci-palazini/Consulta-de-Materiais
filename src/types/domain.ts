@@ -35,6 +35,8 @@ export interface CM {
   contest_reason: string | null
   viability: boolean | null
   ov_number: string | null
+  internal_id: string | null
+  critical_analysis_url: string | null
   finalization_notes: string | null
   finalized_at: string | null
   finalized_by: string | null

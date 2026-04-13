@@ -280,63 +280,85 @@ export function AdminPage() {
             </Button>
           </div>
 
-          {loadingProfiles ? (
+          {loadingProfiles || loadingDepts ? (
             <div style={{ padding: '2rem', display: 'flex', justifyContent: 'center' }}>
               <div style={{ width: 24, height: 24, borderRadius: '50%', border: '2px solid #e2e8f0', borderTopColor: '#2563eb', animation: 'spin 0.8s linear infinite' }} />
             </div>
           ) : profiles.length === 0 ? (
             <div style={{ padding: '2.5rem', textAlign: 'center', fontSize: 13, color: '#64748b' }}>Nenhum usuário cadastrado</div>
-          ) : (
-            <div>
-              {profiles.map((p) => (
-                <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem 1.5rem', borderBottom: '1px solid #f8fafc', transition: 'background-color 0.1s' }}
-                  onMouseEnter={(e) => (e.currentTarget as HTMLDivElement).style.backgroundColor = '#fafafa'}
-                  onMouseLeave={(e) => (e.currentTarget as HTMLDivElement).style.backgroundColor = 'transparent'}
-                >
-                  <div style={{ width: 36, height: 36, borderRadius: '50%', backgroundColor: '#dbeafe', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: '#1d4ed8', flexShrink: 0 }}>
-                    {p.avatar_initials}
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontSize: 13.5, fontWeight: 500, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.full_name}</p>
-                    <p style={{ fontSize: 12, color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.email}</p>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-                    {p.department && (
-                      <span style={{ fontSize: 12, color: '#64748b', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', padding: '0.15rem 0.5rem', borderRadius: 6 }}>
-                        {(p as any).department?.name || '-'}
-                      </span>
-                    )}
-                    <span style={{
-                      fontSize: 11,
-                      fontWeight: 600,
-                      padding: '0.15rem 0.5rem',
-                      borderRadius: 999,
-                      backgroundColor: p.role === 'admin' ? '#f5f3ff' : '#f8fafc',
-                      color: p.role === 'admin' ? '#6d28d9' : '#64748b',
-                    }}>
-                      {p.role === 'admin' ? 'Admin' : 'Membro'}
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
-                    <button onClick={() => { setEditingProfile(p); setShowUserForm(true) }}
-                      style={{ padding: '0.3rem 0.4rem', borderRadius: 6, border: 'none', background: 'transparent', cursor: 'pointer', color: '#94a3b8', display: 'flex', transition: 'color 0.15s, background-color 0.15s' }}
-                      onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = '#0f172a'; (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#f1f5f9' }}
-                      onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = '#94a3b8'; (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent' }}
-                    >
-                      <Pencil size={14} />
-                    </button>
-                    <button onClick={() => setDeletingId(p.id)}
-                      style={{ padding: '0.3rem 0.4rem', borderRadius: 6, border: 'none', background: 'transparent', cursor: 'pointer', color: '#94a3b8', display: 'flex', transition: 'color 0.15s, background-color 0.15s' }}
-                      onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = '#dc2626'; (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#fef2f2' }}
-                      onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = '#94a3b8'; (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent' }}
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
+          ) : (() => {
+            const groups = departments
+              .map(d => ({ dept: d, users: profiles.filter(p => p.department_id === d.id) }))
+              .filter(g => g.users.length > 0)
+            const noDept = profiles.filter(p => !p.department_id)
+
+            const renderUserRow = (p: Profile) => (
+              <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.625rem 1.5rem', borderBottom: '1px solid #f8fafc', transition: 'background-color 0.1s' }}
+                onMouseEnter={(e) => (e.currentTarget as HTMLDivElement).style.backgroundColor = '#fafafa'}
+                onMouseLeave={(e) => (e.currentTarget as HTMLDivElement).style.backgroundColor = 'transparent'}
+              >
+                <div style={{ width: 34, height: 34, borderRadius: '50%', backgroundColor: '#dbeafe', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: '#1d4ed8', flexShrink: 0 }}>
+                  {p.avatar_initials}
                 </div>
-              ))}
-            </div>
-          )}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: 13.5, fontWeight: 500, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.full_name}</p>
+                  <p style={{ fontSize: 12, color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.email}</p>
+                </div>
+                <span style={{
+                  fontSize: 11,
+                  fontWeight: 600,
+                  padding: '0.15rem 0.5rem',
+                  borderRadius: 999,
+                  flexShrink: 0,
+                  backgroundColor: p.role === 'admin' ? '#f5f3ff' : '#f8fafc',
+                  color: p.role === 'admin' ? '#6d28d9' : '#94a3b8',
+                }}>
+                  {p.role === 'admin' ? 'Admin' : 'Membro'}
+                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
+                  <button onClick={() => { setEditingProfile(p); setShowUserForm(true) }}
+                    style={{ padding: '0.3rem 0.4rem', borderRadius: 6, border: 'none', background: 'transparent', cursor: 'pointer', color: '#94a3b8', display: 'flex', transition: 'color 0.15s, background-color 0.15s' }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = '#0f172a'; (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#f1f5f9' }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = '#94a3b8'; (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent' }}
+                  >
+                    <Pencil size={14} />
+                  </button>
+                  <button onClick={() => setDeletingId(p.id)}
+                    style={{ padding: '0.3rem 0.4rem', borderRadius: 6, border: 'none', background: 'transparent', cursor: 'pointer', color: '#94a3b8', display: 'flex', transition: 'color 0.15s, background-color 0.15s' }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = '#dc2626'; (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#fef2f2' }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = '#94a3b8'; (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent' }}
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </div>
+            )
+
+            return (
+              <div>
+                {groups.map(({ dept, users }) => (
+                  <div key={dept.id}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1.5rem', backgroundColor: '#f8fafc', borderBottom: '1px solid #f1f5f9', borderTop: '1px solid #f1f5f9' }}>
+                      <Building2 size={12} style={{ color: '#94a3b8', flexShrink: 0 }} />
+                      <span style={{ fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{dept.name}</span>
+                      <span style={{ fontSize: 11, color: '#94a3b8', marginLeft: 2 }}>{users.length}</span>
+                    </div>
+                    {users.map(renderUserRow)}
+                  </div>
+                ))}
+                {noDept.length > 0 && (
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1.5rem', backgroundColor: '#f8fafc', borderBottom: '1px solid #f1f5f9', borderTop: '1px solid #f1f5f9' }}>
+                      <Building2 size={12} style={{ color: '#94a3b8', flexShrink: 0 }} />
+                      <span style={{ fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Sem departamento</span>
+                      <span style={{ fontSize: 11, color: '#94a3b8', marginLeft: 2 }}>{noDept.length}</span>
+                    </div>
+                    {noDept.map(renderUserRow)}
+                  </div>
+                )}
+              </div>
+            )
+          })()}
         </div>
       )}
 

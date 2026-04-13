@@ -126,11 +126,14 @@ export async function notifyCM(payload: NotifyCMPayload): Promise<void> {
 
     const body = buildBodyHtml(payload)
 
+    const isLocalhost = typeof window !== 'undefined' && window.location.hostname === 'localhost'
+
     const { error } = await supabase.functions.invoke('notify-ms-forms', {
       body: {
         to_dept_id: payload.toDept.id,
         subject:    eventLabel,
         body_html:  body,
+        ...(isLocalhost && { dev_mode: true }),
       },
     })
 

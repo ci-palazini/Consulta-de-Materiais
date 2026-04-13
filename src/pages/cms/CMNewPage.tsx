@@ -4,7 +4,7 @@ import { useCreateCM } from '@/hooks/useCreateCM'
 import { useAuth } from '@/hooks/useAuth'
 import { useDepartments } from '@/hooks/useDepartments'
 import { Button, Input, Textarea } from '@/components/ui'
-import { AlertCircle, ArrowLeft, Info, Sparkles, RefreshCw } from 'lucide-react'
+import { AlertCircle, ArrowLeft, Info, Sparkles, RefreshCw, Link, Hash } from 'lucide-react'
 import { toast } from '@/store/toastStore'
 import { notifyCM } from '@/lib/msFormsNotifier'
 
@@ -16,6 +16,8 @@ export function CMNewPage() {
 
   const [formData, setFormData] = useState({ title: '', description: '' })
   const [isNewItem, setIsNewItem] = useState(false)
+  const [internalId, setInternalId] = useState('')
+  const [criticalAnalysisUrl, setCriticalAnalysisUrl] = useState('')
   const [error, setError] = useState<string | null>(null)
 
   if (profile?.department?.slug !== 'vendas') {
@@ -44,6 +46,8 @@ export function CMNewPage() {
         description: formData.description,
         createdBy: profile!.id,
         isNewItem,
+        internalId:          internalId.trim() || undefined,
+        criticalAnalysisUrl: criticalAnalysisUrl.trim() || undefined,
       })
       toast.success('CM criada com sucesso!')
 
@@ -119,6 +123,36 @@ export function CMNewPage() {
               required
               rows={7}
             />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.875rem' }}>
+            <div>
+              <label htmlFor="internalId" style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, fontWeight: 500, color: '#374151', marginBottom: '0.375rem' }}>
+                <Hash size={12} style={{ color: '#94a3b8' }} />
+                Código de identificação
+              </label>
+              <Input
+                id="internalId"
+                value={internalId}
+                onChange={(e) => setInternalId(e.target.value)}
+              />
+              <p style={{ fontSize: 11.5, color: '#94a3b8', marginTop: 3 }}>Identificação interna</p>
+            </div>
+
+            <div>
+              <label htmlFor="criticalAnalysisUrl" style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, fontWeight: 500, color: '#374151', marginBottom: '0.375rem' }}>
+                <Link size={12} style={{ color: '#94a3b8' }} />
+                URL da Análise Crítica
+              </label>
+              <Input
+                id="criticalAnalysisUrl"
+                type="url"
+                placeholder="https://..."
+                value={criticalAnalysisUrl}
+                onChange={(e) => setCriticalAnalysisUrl(e.target.value)}
+              />
+              <p style={{ fontSize: 11.5, color: '#94a3b8', marginTop: 3 }}>Pode ser preenchido depois (opcional)</p>
+            </div>
           </div>
 
           <div>

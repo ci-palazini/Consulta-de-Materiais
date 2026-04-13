@@ -13,10 +13,12 @@ import { RespondToContestModal } from '@/components/cm/RespondToContestModal'
 import { AttachmentsSection } from '@/components/cm/AttachmentsSection'
 import {
   AlertCircle, ArrowLeft, CheckCircle, XCircle, GitBranch,
-  CheckSquare, Flag, MessageSquare, User, Building2, Calendar, Hash, FileCheck
+  CheckSquare, Flag, MessageSquare, User, Building2, Calendar, Hash, FileCheck,
+  Link, Pencil, X, Check
 } from 'lucide-react'
 import { CMWorkflowStage, DepartmentSlug } from '@/types/enums'
 import type { CMWithSteps } from '@/types/domain'
+import { useUpdateCMExtraFields } from '@/hooks/useUpdateCMExtraFields'
 
 const DEPT_COLORS: Record<string, { bg: string; color: string }> = {
   vendas:        { bg: '#eff6ff', color: '#1d4ed8' },
@@ -87,6 +89,151 @@ function ParallelBranchStatus({ cm }: { cm: CMWithSteps }) {
           </div>
         ))}
       </div>
+    </div>
+  )
+}
+
+// ── CM Extra Fields (internal_id + critical_analysis_url) ───────
+function CMExtraFields({ cm, isVendas }: { cm: CMWithSteps; isVendas: boolean }) {
+  const updateMutation = useUpdateCMExtraFields()
+  const [editing, setEditing] = useState(false)
+  const [internalId, setInternalId] = useState(cm.internal_id ?? '')
+  const [analysisUrl, setAnalysisUrl] = useState(cm.critical_analysis_url ?? '')
+
+  const hasContent = cm.internal_id || cm.critical_analysis_url
+
+  const handleSave = async () => {
+    await updateMutation.mutateAsync({
+      cmId: cm.id,
+      cmNumber: cm.number,
+      internalId: internalId || null,
+      criticalAnalysisUrl: analysisUrl || null,
+    })
+    setEditing(false)
+  }
+
+  const handleCancel = () => {
+    setInternalId(cm.internal_id ?? '')
+    setAnalysisUrl(cm.critical_analysis_url ?? '')
+    setEditing(false)
+  }
+
+  if (!hasContent && !isVendas) return null
+
+  return (
+    <div style={{ backgroundColor: '#fff', borderRadius: 12, border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', padding: '1.25rem 1.5rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+        <h2 style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>Informações Adicionais</h2>
+        {isVendas && !editing && (
+          <button
+            onClick={() => setEditing(true)}
+            style={{ padding: '0.25rem 0.375rem', borderRadius: 6, border: 'none', background: 'transparent', cursor: 'pointer', color: '#94a3b8', display: 'flex', transition: 'color 0.15s, background-color 0.15s' }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = '#0f172a'; e.currentTarget.style.backgroundColor = '#f8fafc' }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = '#94a3b8'; e.currentTarget.style.backgroundColor = 'transparent' }}
+          >
+            <Pencil size={14} />
+          </button>
+        )}
+      </div>
+
+      {editing ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
+          <div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 500, color: '#374151', marginBottom: '0.3rem' }}>
+              <Hash size={11} style={{ color: '#94a3b8' }} />
+              Código de identificação
+            </label>
+            <input
+              value={internalId}
+              onChange={(e) => setInternalId(e.target.value)}
+              style={{ width: '100%', height: 34, padding: '0 0.75rem', fontSize: 13, fontFamily: 'inherit', color: '#0f172a', backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, outline: 'none', boxSizing: 'border-box' }}
+              onFocus={(e) => { e.target.style.borderColor = '#2563eb'; e.target.style.boxShadow = '0 0 0 3px rgba(37,99,235,0.12)' }}
+              onBlur={(e) => { e.target.style.borderColor = '#e2e8f0'; e.target.style.boxShadow = 'none' }}
+            />
+          </div>
+          <div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 500, color: '#374151', marginBottom: '0.3rem' }}>
+              <Link size={11} style={{ color: '#94a3b8' }} />
+              URL da Análise Crítica
+            </label>
+            <input
+              type="url"
+              value={analysisUrl}
+              onChange={(e) => setAnalysisUrl(e.target.value)}
+              placeholder="https://..."
+              style={{ width: '100%', height: 34, padding: '0 0.75rem', fontSize: 13, fontFamily: 'inherit', color: '#0f172a', backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, outline: 'none', boxSizing: 'border-box' }}
+              onFocus={(e) => { e.target.style.borderColor = '#2563eb'; e.target.style.boxShadow = '0 0 0 3px rgba(37,99,235,0.12)' }}
+              onBlur={(e) => { e.target.style.borderColor = '#e2e8f0'; e.target.style.boxShadow = 'none' }}
+            />
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
+            <button
+              onClick={handleCancel}
+              disabled={updateMutation.isPending}
+              style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '0.3rem 0.75rem', fontSize: 12, fontWeight: 500, borderRadius: 7, border: '1px solid #e2e8f0', background: '#fff', color: '#64748b', cursor: 'pointer', fontFamily: 'inherit' }}
+            >
+              <X size={12} />
+              Cancelar
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={updateMutation.isPending}
+              style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '0.3rem 0.75rem', fontSize: 12, fontWeight: 500, borderRadius: 7, border: 'none', background: '#2563eb', color: '#fff', cursor: 'pointer', fontFamily: 'inherit', opacity: updateMutation.isPending ? 0.7 : 1 }}
+            >
+              <Check size={12} />
+              Salvar
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          {cm.internal_id ? (
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 3 }}>
+                <Hash size={11} style={{ color: '#94a3b8' }} />
+                <p style={{ fontSize: 10.5, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>Código de identificação</p>
+              </div>
+              <p style={{ fontSize: 13.5, fontWeight: 600, color: '#0f172a', fontFamily: 'monospace' }}>{cm.internal_id}</p>
+            </div>
+          ) : isVendas ? (
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 3 }}>
+                <Hash size={11} style={{ color: '#94a3b8' }} />
+                <p style={{ fontSize: 10.5, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>Código de identificação</p>
+              </div>
+              <p style={{ fontSize: 12.5, color: '#cbd5e1', fontStyle: 'italic' }}>Não informado</p>
+            </div>
+          ) : null}
+
+          {cm.critical_analysis_url ? (
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 3 }}>
+                <Link size={11} style={{ color: '#94a3b8' }} />
+                <p style={{ fontSize: 10.5, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>Análise Crítica</p>
+              </div>
+              <a
+                href={cm.critical_analysis_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ fontSize: 13, color: '#2563eb', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4, wordBreak: 'break-all' }}
+                onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
+                onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
+              >
+                Abrir documento
+                <svg width="11" height="11" viewBox="0 0 12 12" fill="none" style={{ flexShrink: 0 }}><path d="M2 10L10 2M10 2H5M10 2V7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              </a>
+            </div>
+          ) : isVendas ? (
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 3 }}>
+                <Link size={11} style={{ color: '#94a3b8' }} />
+                <p style={{ fontSize: 10.5, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>Análise Crítica</p>
+              </div>
+              <p style={{ fontSize: 12.5, color: '#cbd5e1', fontStyle: 'italic' }}>URL não informada</p>
+            </div>
+          ) : null}
+        </div>
+      )}
     </div>
   )
 }
@@ -383,10 +530,11 @@ export function CMDetailPage() {
 
         </div>
 
-        {/* Right column — attachments */}
+        {/* Right column — attachments + extra fields */}
         {profile && (
-          <div style={{ flex: '0 0 40%', minWidth: 0, position: 'sticky', top: '1rem' }}>
+          <div style={{ flex: '0 0 40%', minWidth: 0, position: 'sticky', top: '1rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             <AttachmentsSection cmId={cm.id} profile={profile} />
+            <CMExtraFields cm={cm} isVendas={mySlug === DepartmentSlug.Vendas} />
           </div>
         )}
 

@@ -22,7 +22,7 @@ export function CMListPage() {
 
   const filtered = allCMs?.filter((cm) => {
     const q = search.toLowerCase()
-    const matchSearch = !q || cm.number.toLowerCase().includes(q) || cm.title.toLowerCase().includes(q) || cm.description.toLowerCase().includes(q)
+    const matchSearch = !q || cm.number.toLowerCase().includes(q) || cm.title.toLowerCase().includes(q) || cm.description.toLowerCase().includes(q) || (cm.internal_id?.toLowerCase().includes(q) ?? false)
     const matchStatus = statusFilter === 'all' || (statusFilter === 'open' && cm.status === 'open') || (statusFilter === 'closed' && cm.status !== 'open')
     return matchSearch && matchStatus
   }) || []
@@ -64,7 +64,7 @@ export function CMListPage() {
           <Search size={14} style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }} />
           <input
             type="text"
-            placeholder="Buscar por número, título ou descrição..."
+            placeholder="Buscar por número, título, descrição ou código..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             style={{

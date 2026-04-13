@@ -7,6 +7,8 @@ interface CreateCMInput {
   description: string
   createdBy: string
   isNewItem: boolean
+  internalId?: string
+  criticalAnalysisUrl?: string
 }
 
 export function useCreateCM() {
@@ -15,10 +17,12 @@ export function useCreateCM() {
   return useMutation({
     mutationFn: async (input: CreateCMInput) => {
       const { data: rows, error } = await supabase.rpc('create_cm', {
-        p_title: input.title,
-        p_description: input.description,
-        p_actor_id: input.createdBy,
-        p_is_new_item: input.isNewItem,
+        p_title:                 input.title,
+        p_description:           input.description,
+        p_actor_id:              input.createdBy,
+        p_is_new_item:           input.isNewItem,
+        p_internal_id:           input.internalId?.trim() ?? null,
+        p_critical_analysis_url: input.criticalAnalysisUrl?.trim() ?? null,
       })
 
       if (error) throw error
