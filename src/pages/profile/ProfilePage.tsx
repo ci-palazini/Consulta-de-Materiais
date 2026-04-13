@@ -2,15 +2,89 @@ import { useState } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { useUpdateProfile } from '@/hooks/useAdminUsers'
 import { Button, Input } from '@/components/ui'
-import { Pencil, Check, X, User, Building2, Shield, Mail } from 'lucide-react'
+import { Pencil, Check, X, User, Building2, Shield, Mail, Lock } from 'lucide-react'
+import { supabase } from '@/lib/supabase'
 
 export function ProfilePage() {
-  const { profile } = useAuth()
+  const { profile, session } = useAuth()
   const updateMutation = useUpdateProfile()
 
   const [isEditing, setIsEditing] = useState(false)
   const [fullName, setFullName] = useState(profile?.full_name || '')
   const [error, setError] = useState<string | null>(null)
+
+  // Change password state
+  const [showPasswordForm, setShowPasswordForm] = useState(false)
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [passwordError, setPasswordError] = useState<string | null>(null)
+  const [passwordSuccess, setPasswordSuccess] = useState(false)
+  const [isChangingPassword, setIsChangingPassword] = useState(false)
+
+  const handlePasswordChange = async () => {
+    setPasswordError(null)
+    setPasswordSuccess(false)
+
+    if (!currentPassword) {
+      setPasswordError('Informe a senha atual')
+      return
+    }
+    if (newPassword.length < 6) {
+      setPasswordError('A nova senha deve ter pelo menos 6 caracteres')
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError('As senhas não coincidem')
+      return
+    }
+
+    const email = profile?.email || session?.user.email
+    if (!email) {
+      setPasswordError('Não foi possível identificar o usuário')
+      return
+    }
+
+    setIsChangingPassword(true)
+    try {
+      // Verify current password by re-authenticating
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password: currentPassword,
+      })
+      if (signInError) {
+        setPasswordError('Senha atual incorreta')
+        return
+      }
+
+      // Update to new password
+      const { error: updateError } = await supabase.auth.updateUser({ password: newPassword })
+      if (updateError) {
+        setPasswordError('Erro ao alterar senha: ' + updateError.message)
+        return
+      }
+
+      setPasswordSuccess(true)
+      setCurrentPassword('')
+      setNewPassword('')
+      setConfirmPassword('')
+      setTimeout(() => {
+        setShowPasswordForm(false)
+        setPasswordSuccess(false)
+      }, 2500)
+    } finally {
+      setIsChangingPassword(false)
+    }
+  }
+
+  const handlePasswordCancel = () => {
+    setCurrentPassword('')
+    setNewPassword('')
+    setConfirmPassword('')
+    setPasswordError(null)
+    setPasswordSuccess(false)
+    setShowPasswordForm(false)
+  }
 
   const handleSave = async () => {
     if (!profile) return
@@ -146,6 +220,91 @@ export function ProfilePage() {
             Para alterar departamento ou perfil de acesso, entre em contato com um administrador.
           </p>
         </div>
+      </div>
+
+      {/* Change password card */}
+      <div style={{ backgroundColor: '#fff', borderRadius: 12, border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', overflow: 'hidden', marginTop: '1.25rem' }}>
+        <button
+          onClick={() => setShowPasswordForm(v => !v)}
+          style={{
+            width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '1rem 1.5rem', border: 'none', background: 'transparent', cursor: 'pointer',
+            textAlign: 'left',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Lock size={15} style={{ color: '#64748b' }} />
+            </div>
+            <div>
+              <p style={{ fontSize: 14, fontWeight: 600, color: '#0f172a' }}>Alterar Senha</p>
+              <p style={{ fontSize: 12, color: '#64748b' }}>Troque sua senha de acesso</p>
+            </div>
+          </div>
+          <span style={{ fontSize: 18, color: '#94a3b8', lineHeight: 1, transform: showPasswordForm ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>›</span>
+        </button>
+
+        {showPasswordForm && (
+          <div style={{ padding: '0 1.5rem 1.25rem', borderTop: '1px solid #f1f5f9' }}>
+            <div style={{ paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+
+              {passwordSuccess && (
+                <div style={{ padding: '0.625rem 0.875rem', borderRadius: 8, backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', color: '#15803d', fontSize: 13, fontWeight: 500 }}>
+                  Senha alterada com sucesso!
+                </div>
+              )}
+
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 500, color: '#374151', display: 'block', marginBottom: 4 }}>Senha atual</label>
+                <Input
+                  type="password"
+                  value={currentPassword}
+                  onChange={e => setCurrentPassword(e.target.value)}
+                  placeholder="••••••"
+                  autoComplete="current-password"
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 500, color: '#374151', display: 'block', marginBottom: 4 }}>Nova senha</label>
+                <Input
+                  type="password"
+                  value={newPassword}
+                  onChange={e => setNewPassword(e.target.value)}
+                  placeholder="Mínimo 6 caracteres"
+                  autoComplete="new-password"
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 500, color: '#374151', display: 'block', marginBottom: 4 }}>Confirmar nova senha</label>
+                <Input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={e => setConfirmPassword(e.target.value)}
+                  placeholder="Repita a nova senha"
+                  autoComplete="new-password"
+                  onKeyDown={e => { if (e.key === 'Enter') handlePasswordChange() }}
+                />
+              </div>
+
+              {passwordError && (
+                <p style={{ fontSize: 12, color: '#dc2626' }}>{passwordError}</p>
+              )}
+
+              <div style={{ display: 'flex', gap: 6, paddingTop: 4 }}>
+                <Button size="sm" onClick={handlePasswordChange} isLoading={isChangingPassword}>
+                  <Check size={13} />
+                  Alterar senha
+                </Button>
+                <Button size="sm" variant="ghost" onClick={handlePasswordCancel} disabled={isChangingPassword}>
+                  <X size={13} />
+                  Cancelar
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
