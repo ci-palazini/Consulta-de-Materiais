@@ -38,10 +38,10 @@ export function RefuseModal({ cm, actorId, isParallel = false, onClose }: Refuse
       const fromDeptName = profile?.department?.name ?? ''
       const actorName    = profile?.full_name ?? ''
 
-      // Notify creator's dept regardless of parallel or not
-      const creatorDept = departments.find(d => d.id === cm.creator?.department_id)
-      if (creatorDept) {
-        notifyCM({ cm, toDept: creatorDept, fromDeptName, actorName, notes, eventType: 'refused' })
+      // Notify Vendas (always the creator dept) — look up by slug to avoid null cm.creator
+      const vendasDept = departments.find(d => d.slug === 'vendas')
+      if (vendasDept) {
+        notifyCM({ cm, toDept: vendasDept, fromDeptName, actorName, notes, eventType: 'refused' })
       }
 
       // When parallel, notify other pending branches so they know not to continue
