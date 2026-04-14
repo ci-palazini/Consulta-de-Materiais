@@ -118,7 +118,6 @@ function CMExtraFields({ cm, isVendas }: { cm: CMWithSteps; isVendas: boolean })
     setEditing(false)
   }
 
-  if (!hasContent && !isVendas) return null
 
   return (
     <div style={{ backgroundColor: '#fff', borderRadius: 12, border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', padding: '1.25rem 1.5rem' }}>
@@ -195,7 +194,7 @@ function CMExtraFields({ cm, isVendas }: { cm: CMWithSteps; isVendas: boolean })
               </div>
               <p style={{ fontSize: 13.5, fontWeight: 600, color: '#0f172a', fontFamily: 'monospace' }}>{cm.internal_id}</p>
             </div>
-          ) : isVendas ? (
+          ) : (
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 3 }}>
                 <Hash size={11} style={{ color: '#94a3b8' }} />
@@ -203,7 +202,7 @@ function CMExtraFields({ cm, isVendas }: { cm: CMWithSteps; isVendas: boolean })
               </div>
               <p style={{ fontSize: 12.5, color: '#cbd5e1', fontStyle: 'italic' }}>Não informado</p>
             </div>
-          ) : null}
+          )}
 
           {cm.critical_analysis_url ? (
             <div>
@@ -223,7 +222,7 @@ function CMExtraFields({ cm, isVendas }: { cm: CMWithSteps; isVendas: boolean })
                 <svg width="11" height="11" viewBox="0 0 12 12" fill="none" style={{ flexShrink: 0 }}><path d="M2 10L10 2M10 2H5M10 2V7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
               </a>
             </div>
-          ) : isVendas ? (
+          ) : (
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 3 }}>
                 <Link size={11} style={{ color: '#94a3b8' }} />
@@ -231,7 +230,7 @@ function CMExtraFields({ cm, isVendas }: { cm: CMWithSteps; isVendas: boolean })
               </div>
               <p style={{ fontSize: 12.5, color: '#cbd5e1', fontStyle: 'italic' }}>URL não informada</p>
             </div>
-          ) : null}
+          )}
         </div>
       )}
     </div>
