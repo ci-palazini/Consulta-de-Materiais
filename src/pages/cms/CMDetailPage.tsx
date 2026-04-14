@@ -100,8 +100,6 @@ function CMExtraFields({ cm, isVendas }: { cm: CMWithSteps; isVendas: boolean })
   const [internalId, setInternalId] = useState(cm.internal_id ?? '')
   const [analysisUrl, setAnalysisUrl] = useState(cm.critical_analysis_url ?? '')
 
-  const hasContent = cm.internal_id || cm.critical_analysis_url
-
   const handleSave = async () => {
     await updateMutation.mutateAsync({
       cmId: cm.id,
