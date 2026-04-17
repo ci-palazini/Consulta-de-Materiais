@@ -1,28 +1,5 @@
--- ============================================================================
--- Jump stage for existing-item flow
---
--- Allows Pricing (existing_pricing_1) and Custos (existing_custos) to jump
--- directly to any future stage in the existing-item workflow, with explicit
--- audit trail via cm_steps.action = 'jumped'.
--- ============================================================================
-
-ALTER TABLE cm_steps DROP CONSTRAINT IF EXISTS cm_steps_action_check;
-
-ALTER TABLE cm_steps ADD CONSTRAINT cm_steps_action_check
-  CHECK (action IN (
-    'created',
-    'forwarded',           -- legacy
-    'returned',            -- legacy
-    'approved',
-    'refused',
-    'dispatched_parallel',
-    'contested',
-    'contest_response',
-    'jumped',
-    'finalized'
-  ));
-
-DROP FUNCTION IF EXISTS jump_existing_stage(uuid, text, text, uuid, uuid[]);
+-- Fix ambiguous "id" references inside jump_existing_stage.
+-- The RETURNS TABLE column "id" shadows unqualified column references.
 
 CREATE OR REPLACE FUNCTION jump_existing_stage(
   p_cm_id              uuid,
