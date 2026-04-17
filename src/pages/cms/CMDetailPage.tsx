@@ -7,6 +7,7 @@ import { CMStatusBadge } from '@/components/cm/CMStatusBadge'
 import { ApproveModal } from '@/components/cm/ApproveModal'
 import { RefuseModal } from '@/components/cm/RefuseModal'
 import { DispatchParallelExistingModal } from '@/components/cm/DispatchParallelExistingModal'
+import { JumpStageModal } from '@/components/cm/JumpStageModal'
 import { FinalizeModal } from '@/components/cm/FinalizeModal'
 import { ContestModal } from '@/components/cm/ContestModal'
 import { RespondToContestModal } from '@/components/cm/RespondToContestModal'
@@ -14,7 +15,7 @@ import { AttachmentsSection } from '@/components/cm/AttachmentsSection'
 import {
   AlertCircle, ArrowLeft, CheckCircle, XCircle, GitBranch,
   CheckSquare, Flag, MessageSquare, User, Building2, Calendar, Hash, FileCheck,
-  Link, Pencil, X, Check
+  Link, Pencil, X, Check, ArrowRightCircle
 } from 'lucide-react'
 import { CMWorkflowStage, DepartmentSlug } from '@/types/enums'
 import type { CMWithSteps } from '@/types/domain'
@@ -38,6 +39,7 @@ const ACTION_CONFIG: Record<string, { bg: string; label: string }> = {
   approved:             { bg: '#16a34a', label: '✓' },
   refused:              { bg: '#dc2626', label: '✗' },
   dispatched_parallel:  { bg: '#7c3aed', label: '⑃' },
+  jumped:               { bg: '#7c3aed', label: '↗' },
   contested:            { bg: '#ea580c', label: '⚑' },
   contest_response:     { bg: '#0891b2', label: '↩' },
   finalized:            { bg: '#16a34a', label: 'F' },
@@ -50,9 +52,199 @@ const ACTION_LABEL: Record<string, string> = {
   approved:            'Aprovada',
   refused:             'Recusada',
   dispatched_parallel: 'Análise paralela iniciada',
+  jumped:              'Pulo de etapa',
   contested:           'Etapa contestada por Vendas',
   contest_response:    'Resposta à contestação',
   finalized:           'Finalizada',
+}
+
+interface WorkflowStep {
+  stage: string
+  label: string
+  shortLabel: string
+}
+
+interface WorkflowStageInfo {
+  flowLabel: string
+  progressLabel: string
+  stageLabel: string
+  tone: { background: string; border: string; color: string }
+}
+
+const NEW_ITEM_FLOW: WorkflowStep[] = [
+  { stage: CMWorkflowStage.NewItemProjetos,    label: 'Engenharia de Projetos', shortLabel: 'PJ' },
+  { stage: CMWorkflowStage.NewItemSuprimentos, label: 'Suprimentos',             shortLabel: 'SUP' },
+  { stage: CMWorkflowStage.NewItemParallel,    label: 'Análise Paralela',        shortLabel: 'PAR' },
+  { stage: CMWorkflowStage.NewItemCustos,      label: 'Custos',                  shortLabel: 'CUS' },
+  { stage: CMWorkflowStage.NewItemPricing,     label: 'Pricing',                 shortLabel: 'PRI' },
+  { stage: CMWorkflowStage.VendasFinalize,     label: 'Finalização em Vendas',   shortLabel: 'VEN' },
+]
+
+const EXISTING_ITEM_FLOW: WorkflowStep[] = [
+  { stage: CMWorkflowStage.ExistingPricing1, label: 'Pricing (1ª análise)',    shortLabel: 'P1' },
+  { stage: CMWorkflowStage.ExistingCustos,   label: 'Custos (triagem)',        shortLabel: 'C1' },
+  { stage: CMWorkflowStage.ExistingParallel, label: 'Análise Paralela',        shortLabel: 'PAR' },
+  { stage: CMWorkflowStage.ExistingCustos2,  label: 'Custos (consolidação)',   shortLabel: 'C2' },
+  { stage: CMWorkflowStage.ExistingPricing2, label: 'Pricing (consolidação)',  shortLabel: 'P2' },
+  { stage: CMWorkflowStage.VendasFinalize,   label: 'Finalização em Vendas',   shortLabel: 'VEN' },
+]
+
+function getWorkflowMapStage(cm: CMWithSteps): string | null {
+  if (cm.workflow_stage === CMWorkflowStage.Refused) {
+    return cm.pre_refusal_stage ?? null
+  }
+
+  if (cm.workflow_stage === CMWorkflowStage.Finalized) {
+    return CMWorkflowStage.VendasFinalize
+  }
+
+  if (cm.workflow_stage === CMWorkflowStage.Contestation) {
+    return null
+  }
+
+  return cm.workflow_stage
+}
+
+function getWorkflowStageInfo(cm: CMWithSteps): WorkflowStageInfo {
+  const flowLabel = cm.is_new_item ? 'Item Novo' : 'Item Existente'
+  const flow = cm.is_new_item ? NEW_ITEM_FLOW : EXISTING_ITEM_FLOW
+  const stepIndex = flow.findIndex((step) => step.stage === cm.workflow_stage)
+
+  if (stepIndex >= 0) {
+    return {
+      flowLabel,
+      progressLabel: `Etapa ${stepIndex + 1} de ${flow.length}`,
+      stageLabel: flow[stepIndex].label,
+      tone: { background: '#eff6ff', border: '#bfdbfe', color: '#1d4ed8' },
+    }
+  }
+
+  if (cm.workflow_stage === CMWorkflowStage.Contestation) {
+    return {
+      flowLabel,
+      progressLabel: 'Etapa especial',
+      stageLabel: 'Contestação em andamento',
+      tone: { background: '#fff7ed', border: '#fed7aa', color: '#c2410c' },
+    }
+  }
+
+  if (cm.workflow_stage === CMWorkflowStage.Refused) {
+    return {
+      flowLabel,
+      progressLabel: 'Fluxo encerrado',
+      stageLabel: 'CM recusada',
+      tone: { background: '#fef2f2', border: '#fecaca', color: '#b91c1c' },
+    }
+  }
+
+  if (cm.workflow_stage === CMWorkflowStage.Finalized) {
+    return {
+      flowLabel,
+      progressLabel: 'Fluxo concluído',
+      stageLabel: 'CM finalizada',
+      tone: { background: '#f0fdf4', border: '#bbf7d0', color: '#15803d' },
+    }
+  }
+
+  return {
+    flowLabel,
+    progressLabel: 'Etapa não mapeada',
+    stageLabel: cm.workflow_stage,
+    tone: { background: '#f8fafc', border: '#e2e8f0', color: '#475569' },
+  }
+}
+
+function WorkflowMap({ cm }: { cm: CMWithSteps }) {
+  const flow = cm.is_new_item ? NEW_ITEM_FLOW : EXISTING_ITEM_FLOW
+  const mapStage = getWorkflowMapStage(cm)
+  const currentIndex = mapStage ? flow.findIndex((step) => step.stage === mapStage) : -1
+  const stageInfo = getWorkflowStageInfo(cm)
+  const isFinalized = cm.workflow_stage === CMWorkflowStage.Finalized
+  const isRefused = cm.workflow_stage === CMWorkflowStage.Refused
+  const lastJumpStep = [...cm.steps].reverse().find((step) => step.action === 'jumped')
+
+  return (
+    <div style={{ backgroundColor: '#fff', borderRadius: 12, border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', padding: '1rem 1.25rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+        <h2 style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>Mapa do Fluxo</h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+          {lastJumpStep && (
+            <span style={{
+              fontSize: 11.5,
+              fontWeight: 600,
+              padding: '0.2rem 0.55rem',
+              borderRadius: 999,
+              border: '1px solid #d8b4fe',
+              backgroundColor: '#f5f3ff',
+              color: '#6d28d9',
+            }}>
+              Pulo registrado
+            </span>
+          )}
+          <span style={{
+            fontSize: 11.5,
+            fontWeight: 600,
+            padding: '0.2rem 0.55rem',
+            borderRadius: 999,
+            border: `1px solid ${stageInfo.tone.border}`,
+            backgroundColor: stageInfo.tone.background,
+            color: stageInfo.tone.color,
+          }}>
+            Fluxo {stageInfo.flowLabel}
+          </span>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'flex-start', overflowX: 'auto', marginTop: '0.875rem', paddingBottom: '0.25rem' }}>
+        {flow.map((step, index) => {
+          const isDone = isFinalized || (currentIndex >= 0 && index < currentIndex)
+          const isActive = currentIndex >= 0 && index === currentIndex
+          const circleBg = isDone ? '#16a34a' : isActive ? (isRefused ? '#dc2626' : '#2563eb') : '#fff'
+          const circleBorder = isDone || isActive ? 'transparent' : '#cbd5e1'
+          const circleColor = isDone || isActive ? '#fff' : '#94a3b8'
+          const textColor = isActive ? '#0f172a' : isDone ? '#166534' : '#64748b'
+          const connectorColor = isDone || (isFinalized && index < flow.length - 1) ? '#86efac' : '#e2e8f0'
+
+          return (
+            <div key={step.stage} style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+              <div style={{ width: 86, textAlign: 'center' }}>
+                <div style={{
+                  width: 34,
+                  height: 34,
+                  margin: '0 auto',
+                  borderRadius: '50%',
+                  border: `1px solid ${circleBorder}`,
+                  backgroundColor: circleBg,
+                  color: circleColor,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  boxShadow: isActive ? '0 0 0 3px rgba(37,99,235,0.14)' : 'none',
+                }}>
+                  {isDone ? '✓' : step.shortLabel}
+                </div>
+                <p style={{ marginTop: 6, fontSize: 11.5, lineHeight: 1.25, color: textColor }}>{step.label}</p>
+              </div>
+              {index < flow.length - 1 && (
+                <div style={{ width: 30, height: 3, borderRadius: 999, backgroundColor: connectorColor, margin: '0 0.2rem', marginTop: 16 }} />
+              )}
+            </div>
+          )
+        })}
+      </div>
+
+      <p style={{ marginTop: '0.5rem', fontSize: 12.5, color: stageInfo.tone.color }}>
+        <span style={{ fontWeight: 600 }}>{stageInfo.progressLabel}</span> · {stageInfo.stageLabel}
+      </p>
+      {lastJumpStep?.notes && (
+        <p style={{ marginTop: 4, fontSize: 12, color: '#6d28d9' }}>
+          Último pulo: {lastJumpStep.notes}
+        </p>
+      )}
+    </div>
+  )
 }
 
 function InfoField({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: string }) {
@@ -246,6 +438,7 @@ export function CMDetailPage() {
   const [showApproveParallel,   setShowApproveParallel]   = useState(false)
   const [showRefuseParallel,    setShowRefuseParallel]    = useState(false)
   const [showDispatchParallel,  setShowDispatchParallel]  = useState(false)
+  const [showJumpStage,         setShowJumpStage]         = useState(false)
   const [showFinalize,          setShowFinalize]          = useState(false)
   const [showContest,           setShowContest]           = useState(false)
   const [showRespondToContest,  setShowRespondToContest]  = useState(false)
@@ -293,6 +486,10 @@ export function CMDetailPage() {
       (stage === CMWorkflowStage.ExistingPricing2   && mySlug === DepartmentSlug.Pricing)
     ),
     canDispatchParallelExisting: isOpen && stage === CMWorkflowStage.ExistingCustos && mySlug === DepartmentSlug.Custos,
+    canJumpStage: isOpen && (
+      (stage === CMWorkflowStage.ExistingPricing1 && mySlug === DepartmentSlug.Pricing) ||
+      (stage === CMWorkflowStage.ExistingCustos && mySlug === DepartmentSlug.Custos)
+    ),
     canApproveParallel: isOpen && !!myPendingBranch,
     canRefuseParallel:  isOpen && !!myPendingBranch,
     canFinalize:  isOpen && stage === CMWorkflowStage.VendasFinalize && mySlug === DepartmentSlug.Vendas,
@@ -339,6 +536,7 @@ export function CMDetailPage() {
           <h1 style={{ fontSize: 19, fontWeight: 700, color: '#0f172a', letterSpacing: '-0.02em', lineHeight: 1.3 }}>{cm.title}</h1>
         </div>
       </div>
+      <WorkflowMap cm={cm} />
 
       {/* Actions bar */}
       {(isOpen || actions.canContest) && hasAnyAction && (
@@ -387,6 +585,12 @@ export function CMDetailPage() {
             <Button variant="secondary" size="sm" onClick={() => setShowDispatchParallel(true)}>
               <GitBranch size={13} />
               Análise Paralela
+            </Button>
+          )}
+          {actions.canJumpStage && (
+            <Button variant="secondary" size="sm" onClick={() => setShowJumpStage(true)}>
+              <ArrowRightCircle size={13} />
+              Pular Etapa
             </Button>
           )}
 
@@ -503,7 +707,7 @@ export function CMDetailPage() {
                       <div style={{ flex: 1, paddingBottom: isLast ? 0 : '1.125rem' }}>
                         <p style={{ fontSize: 13.5, fontWeight: 500, color: '#0f172a', lineHeight: 1.4 }}>
                           {label}
-                          {step.to_department && ['forwarded', 'approved', 'contested', 'contest_response'].includes(step.action) && step.from_dept_id !== step.to_dept_id && (
+                          {step.to_department && ['forwarded', 'approved', 'jumped', 'contested', 'contest_response'].includes(step.action) && step.from_dept_id !== step.to_dept_id && (
                             <> para <strong>{step.to_department.name}</strong></>
                           )}
                         </p>
@@ -543,6 +747,7 @@ export function CMDetailPage() {
       {showApproveParallel  && profile && <ApproveModal cm={cm} actorId={profile.id} isParallel onClose={() => setShowApproveParallel(false)} />}
       {showRefuseParallel   && profile && <RefuseModal  cm={cm} actorId={profile.id} isParallel onClose={() => setShowRefuseParallel(false)} />}
       {showDispatchParallel && profile && <DispatchParallelExistingModal cm={cm} actorId={profile.id} onClose={() => setShowDispatchParallel(false)} />}
+      {showJumpStage        && profile && <JumpStageModal cm={cm} actorId={profile.id} onClose={() => setShowJumpStage(false)} />}
       {showFinalize         && profile && <FinalizeModal cm={cm} actorId={profile.id} onClose={() => setShowFinalize(false)} />}
       {showContest          && profile && <ContestModal  cm={cm} actorId={profile.id} onClose={() => setShowContest(false)} />}
       {showRespondToContest && profile && <RespondToContestModal cm={cm} actorId={profile.id} onClose={() => setShowRespondToContest(false)} />}

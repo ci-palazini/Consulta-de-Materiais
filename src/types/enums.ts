@@ -11,6 +11,7 @@ export const CMAction = {
   Approved: 'approved',
   Refused: 'refused',
   DispatchedParallel: 'dispatched_parallel',
+  Jumped: 'jumped',
   Contested: 'contested',
   ContestResponse: 'contest_response',
   Finalized: 'finalized',

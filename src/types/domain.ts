@@ -33,6 +33,7 @@ export interface CM {
   workflow_stage: CMWorkflowStageType
   contested_step_id: string | null
   contest_reason: string | null
+  pre_refusal_stage?: CMWorkflowStageType | null
   viability: boolean | null
   ov_number: string | null
   internal_id: string | null

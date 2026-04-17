@@ -7,7 +7,7 @@ export interface NotifyCMPayload {
   fromDeptName: string
   actorName: string
   notes?: string
-  eventType: 'created' | 'forwarded' | 'approved' | 'refused' | 'dispatched_parallel' | 'contested' | 'contest_response'
+  eventType: 'created' | 'forwarded' | 'approved' | 'refused' | 'dispatched_parallel' | 'jumped' | 'contested' | 'contest_response'
 }
 
 function buildBodyHtml(payload: NotifyCMPayload): string {
@@ -19,6 +19,7 @@ function buildBodyHtml(payload: NotifyCMPayload): string {
     forwarded:         { accent: '#2563eb', bg: '#dbeafe', color: '#1d4ed8', label: 'CM Encaminhada' },
     refused:           { accent: '#dc2626', bg: '#fee2e2', color: '#b91c1c', label: 'CM Recusada' },
     dispatched_parallel: { accent: '#7c3aed', bg: '#ede9fe', color: '#6d28d9', label: 'Análise Paralela' },
+    jumped:            { accent: '#7c3aed', bg: '#ede9fe', color: '#6d28d9', label: 'Pulo de Etapa' },
     contested:         { accent: '#ea580c', bg: '#ffedd5', color: '#c2410c', label: 'Etapa Contestada' },
     contest_response:  { accent: '#0891b2', bg: '#cffafe', color: '#0e7490', label: 'Resposta à Contestação' },
   }
@@ -118,6 +119,7 @@ export async function notifyCM(payload: NotifyCMPayload): Promise<void> {
       forwarded:          'CM Encaminhada',
       refused:            'CM Recusada',
       dispatched_parallel:'Análise Paralela',
+      jumped:             'Pulo de Etapa',
       contested:          'Etapa Contestada',
       contest_response:   'Resposta à Contestação',
     }
