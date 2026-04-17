@@ -14,6 +14,29 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+const RETRYABLE_STATUS = new Set([408, 425, 429, 500, 502, 503, 504])
+const RETRY_DELAYS_MS = [800, 1800]
+const REQUEST_TIMEOUT_MS = 15000
+
+function delay(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+function toRecipientList(rows: { email: string }[]): string {
+  const validEmailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  const seen = new Set<string>()
+  const valid: string[] = []
+
+  rows.forEach(({ email }) => {
+    const normalized = email?.trim().toLowerCase()
+    if (!normalized || !validEmailRegex.test(normalized) || seen.has(normalized)) return
+    seen.add(normalized)
+    valid.push(normalized)
+  })
+
+  return valid.join(';')
+}
+
 async function getEmailsByDept(deptId: string): Promise<string> {
   const supabase = createClient(SUPABASE_URL, SERVICE_KEY)
   const { data, error } = await supabase
@@ -22,7 +45,58 @@ async function getEmailsByDept(deptId: string): Promise<string> {
     .eq('department_id', deptId)
 
   if (error) throw new Error(`Erro ao buscar emails: ${error.message}`)
-  return (data ?? []).map((p: { email: string }) => p.email).join(';')
+  return toRecipientList(data ?? [])
+}
+
+async function getAdminEmails(): Promise<string> {
+  const supabase = createClient(SUPABASE_URL, SERVICE_KEY)
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('email')
+    .eq('role', 'admin')
+
+  if (error) throw new Error(`Erro ao buscar admins: ${error.message}`)
+  return toRecipientList(data ?? [])
+}
+
+async function submitToMsForms(payload: unknown): Promise<void> {
+  for (let attempt = 1; attempt <= RETRY_DELAYS_MS.length + 1; attempt++) {
+    const retryDelay = RETRY_DELAYS_MS[attempt - 1] ?? 0
+
+    try {
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+      let res: Response
+      try {
+        res = await fetch(SUBMIT_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+          signal: controller.signal,
+        })
+      } finally {
+        clearTimeout(timeout)
+      }
+
+      if (res.ok) return
+
+      const errText = await res.text()
+      const isRetryable = RETRYABLE_STATUS.has(res.status)
+
+      if (!isRetryable || attempt > RETRY_DELAYS_MS.length) {
+        throw new Error(`MS Forms retornou ${res.status}: ${errText}`)
+      }
+
+      console.warn(`[notify-ms-forms] tentativa ${attempt} falhou com ${res.status}; tentando novamente em ${retryDelay}ms`)
+    } catch (err) {
+      const isAbort = err instanceof DOMException && err.name === 'AbortError'
+      const canRetry = isAbort || err instanceof TypeError
+      if (!canRetry || attempt > RETRY_DELAYS_MS.length) throw err
+      console.warn(`[notify-ms-forms] tentativa ${attempt} falhou por rede/timeout; tentando novamente em ${retryDelay}ms`)
+    }
+
+    await delay(retryDelay)
+  }
 }
 
 serve(async (req) => {
@@ -34,7 +108,7 @@ serve(async (req) => {
   }
 
   try {
-    const { to_dept_id, subject, body_html } = await req.json()
+    const { to_dept_id, subject, body_html, dev_mode } = await req.json()
 
     if (!to_dept_id || !subject || !body_html) {
       return new Response(
@@ -43,10 +117,13 @@ serve(async (req) => {
       )
     }
 
-    const to = await getEmailsByDept(to_dept_id)
+    const to = dev_mode
+      ? await getAdminEmails()
+      : await getEmailsByDept(to_dept_id)
+
     if (!to) {
       return new Response(
-        JSON.stringify({ error: 'Nenhum usuário no departamento de destino' }),
+        JSON.stringify({ error: dev_mode ? 'Nenhum admin encontrado' : 'Nenhum usuário com e-mail válido no departamento de destino' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       )
     }
@@ -54,20 +131,11 @@ serve(async (req) => {
     const now = new Date().toISOString()
     const answers = JSON.stringify([
       { questionId: FIELD_TO,      answer1: to },
-      { questionId: FIELD_SUBJECT, answer1: subject },
+      { questionId: FIELD_SUBJECT, answer1: dev_mode ? `[DEV] ${subject}` : subject },
       { questionId: FIELD_BODY,    answer1: body_html },
     ])
 
-    const res = await fetch(SUBMIT_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ startDate: now, submitDate: now, answers }),
-    })
-
-    if (!res.ok) {
-      const err = await res.text()
-      throw new Error(`MS Forms retornou ${res.status}: ${err}`)
-    }
+    await submitToMsForms({ startDate: now, submitDate: now, answers })
 
     return new Response(
       JSON.stringify({ ok: true }),
