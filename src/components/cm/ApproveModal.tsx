@@ -58,7 +58,10 @@ export function ApproveModal({ cm, actorId, isParallel = false, onClose }: Appro
         const nextSlugs = NEXT_DEPT_SLUGS[cm.workflow_stage] ?? []
         nextSlugs.forEach(slug => {
           const dept = departments.find(d => d.slug === slug)
-          if (dept) notifyCM({ cm, toDept: dept, fromDeptName, actorName, eventType: 'approved' })
+          if (dept) notifyCM({
+            cm, toDept: dept, fromDeptName, actorName, eventType: 'approved',
+            ...(slug === 'vendas' && cm.created_by ? { toUserId: cm.created_by } : {}),
+          })
         })
       } else {
         // Notify other pending branches so they know one branch already resolved

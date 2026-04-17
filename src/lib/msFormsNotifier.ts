@@ -8,6 +8,8 @@ export interface NotifyCMPayload {
   actorName: string
   notes?: string
   eventType: 'created' | 'forwarded' | 'approved' | 'refused' | 'dispatched_parallel' | 'jumped' | 'contested' | 'contest_response'
+  /** Quando definido, o email vai apenas para este usuário em vez de todo o departamento */
+  toUserId?: string
 }
 
 function buildBodyHtml(payload: NotifyCMPayload): string {
@@ -132,9 +134,9 @@ export async function notifyCM(payload: NotifyCMPayload): Promise<void> {
 
     const { error } = await supabase.functions.invoke('notify-ms-forms', {
       body: {
-        to_dept_id: payload.toDept.id,
-        subject:    eventLabel,
-        body_html:  body,
+        ...(payload.toUserId ? { to_user_id: payload.toUserId } : { to_dept_id: payload.toDept.id }),
+        subject:   eventLabel,
+        body_html: body,
         ...(isLocalhost && { dev_mode: true }),
       },
     })

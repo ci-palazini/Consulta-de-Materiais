@@ -48,6 +48,18 @@ async function getEmailsByDept(deptId: string): Promise<string> {
   return toRecipientList(data ?? [])
 }
 
+async function getEmailByUserId(userId: string): Promise<string> {
+  const supabase = createClient(SUPABASE_URL, SERVICE_KEY)
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('email')
+    .eq('id', userId)
+    .single()
+
+  if (error) throw new Error(`Erro ao buscar email do usuário: ${error.message}`)
+  return toRecipientList(data ? [data] : [])
+}
+
 async function getAdminEmails(): Promise<string> {
   const supabase = createClient(SUPABASE_URL, SERVICE_KEY)
   const { data, error } = await supabase
@@ -108,22 +120,27 @@ serve(async (req) => {
   }
 
   try {
-    const { to_dept_id, subject, body_html, dev_mode } = await req.json()
+    const { to_dept_id, to_user_id, subject, body_html, dev_mode } = await req.json()
 
-    if (!to_dept_id || !subject || !body_html) {
+    if ((!to_dept_id && !to_user_id) || !subject || !body_html) {
       return new Response(
-        JSON.stringify({ error: 'Campos obrigatórios: to_dept_id, subject, body_html' }),
+        JSON.stringify({ error: 'Campos obrigatórios: to_dept_id ou to_user_id, subject, body_html' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       )
     }
 
-    const to = dev_mode
-      ? await getAdminEmails()
-      : await getEmailsByDept(to_dept_id)
+    let to: string
+    if (dev_mode) {
+      to = await getAdminEmails()
+    } else if (to_user_id) {
+      to = await getEmailByUserId(to_user_id)
+    } else {
+      to = await getEmailsByDept(to_dept_id)
+    }
 
     if (!to) {
       return new Response(
-        JSON.stringify({ error: dev_mode ? 'Nenhum admin encontrado' : 'Nenhum usuário com e-mail válido no departamento de destino' }),
+        JSON.stringify({ error: dev_mode ? 'Nenhum admin encontrado' : 'Nenhum destinatário encontrado' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       )
     }
