@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { toast } from '@/store/toastStore'
 import type { CM, Department } from '@/types/domain'
 
 export interface NotifyCMPayload {
@@ -141,8 +142,12 @@ export async function notifyCM(payload: NotifyCMPayload): Promise<void> {
       },
     })
 
-    if (error) console.error('[notifyCM] Edge Function error:', error)
+    if (error) {
+      console.error('[notifyCM] Edge Function error:', error)
+      toast.error(`Falha ao notificar ${payload.toDept.name} por email.`)
+    }
   } catch (err) {
     console.error('[notifyCM] Unexpected error:', err)
+    toast.error(`Falha ao notificar ${payload.toDept.name} por email.`)
   }
 }
