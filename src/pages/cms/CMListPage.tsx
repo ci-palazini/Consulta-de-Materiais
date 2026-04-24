@@ -27,7 +27,7 @@ export function CMListPage() {
     return matchSearch && matchStatus
   }) || []
 
-  const isVendas = profile?.department?.slug === 'vendas'
+  const canCreateCM = profile?.department?.slug === 'vendas' || profile?.department?.slug === 'pricing'
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }} className="animate-fade-in">
@@ -37,7 +37,7 @@ export function CMListPage() {
           <h1 style={{ fontSize: 22, fontWeight: 700, color: '#0f172a', letterSpacing: '-0.02em' }}>Consultas de Materiais</h1>
           <p style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>{allCMs?.length || 0} consultas no total</p>
         </div>
-        {isVendas && (
+        {canCreateCM && (
           <Link to="/cms/new">
             <Button>
               <Plus size={15} />
@@ -143,7 +143,7 @@ export function CMListPage() {
           <p style={{ fontSize: 13, color: '#64748b' }}>
             {allCMs?.length === 0 ? 'Nenhuma CM criada ainda' : 'Nenhuma CM encontrada com esses filtros'}
           </p>
-          {isVendas && allCMs?.length === 0 && (
+          {canCreateCM && allCMs?.length === 0 && (
             <Link to="/cms/new" style={{ marginTop: '1rem' }}>
               <Button size="sm">
                 <Plus size={14} />

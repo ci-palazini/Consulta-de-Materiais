@@ -87,7 +87,7 @@ export function DashboardPage() {
 
   const totalOpen   = allCMs?.filter((cm) => cm.status === 'open').length || 0
   const totalClosed = allCMs?.filter((cm) => cm.status !== 'open').length || 0
-  const isVendas    = profile?.department?.slug === 'vendas'
+  const canCreateCM = profile?.department?.slug === 'vendas' || profile?.department?.slug === 'pricing'
   const firstName   = profile?.full_name?.split(' ')[0] || 'Usuário'
 
   return (
@@ -102,7 +102,7 @@ export function DashboardPage() {
             {profile?.department?.name} · {new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
           </p>
         </div>
-        {isVendas && (
+        {canCreateCM && (
           <Link to="/cms/new">
             <Button>
               <Plus size={15} />

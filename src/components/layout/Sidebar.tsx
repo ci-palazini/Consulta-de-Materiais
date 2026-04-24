@@ -23,7 +23,7 @@ export function Sidebar() {
     PROFILE_ITEM,
   ]
 
-  const isVendas = profile?.department?.slug === 'vendas'
+  const canCreateCM = profile?.department?.slug === 'vendas' || profile?.department?.slug === 'pricing'
 
   const isActive = (path: string) =>
     path === '/dashboard'
@@ -89,8 +89,8 @@ export function Sidebar() {
         </div>
       </div>
 
-      {/* Nova CM (só Vendas) */}
-      {isVendas && (
+      {/* Nova CM (Vendas e Pricing) */}
+      {canCreateCM && (
         <div style={{ padding: '0.625rem 0.75rem 0' }}>
           <Link
             to="/cms/new"
