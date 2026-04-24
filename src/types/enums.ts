@@ -18,23 +18,12 @@ export const CMAction = {
 } as const
 
 export const CMWorkflowStage = {
-  // Item Novo
-  NewItemProjetos:    'new_item_projetos',
-  NewItemSuprimentos: 'new_item_suprimentos',
-  NewItemParallel:    'new_item_parallel',
-  NewItemCustos:      'new_item_custos',
-  NewItemPricing:     'new_item_pricing',
-  // Item Existente
-  ExistingPricing1:   'existing_pricing_1',
-  ExistingCustos:     'existing_custos',
-  ExistingParallel:   'existing_parallel',
-  ExistingCustos2:    'existing_custos_2',
-  ExistingPricing2:   'existing_pricing_2',
-  // Final stages (both flows)
-  VendasFinalize:     'vendas_finalize',
-  Contestation:       'contestation',
-  Finalized:          'finalized',
-  Refused:            'refused',
+  Open:           'open',
+  Parallel:       'parallel',
+  VendasFinalize: 'vendas_finalize',
+  Contested:      'contested',
+  Finalized:      'finalized',
+  Refused:        'refused',
 } as const
 
 export const DepartmentSlug = {

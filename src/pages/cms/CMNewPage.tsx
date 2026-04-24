@@ -7,6 +7,15 @@ import { Button, Input, Textarea } from '@/components/ui'
 import { AlertCircle, ArrowLeft, Info, Sparkles, RefreshCw, Link, Hash } from 'lucide-react'
 import { toast } from '@/store/toastStore'
 import { notifyCM } from '@/lib/msFormsNotifier'
+import { DepartmentSlug } from '@/types/enums'
+
+// Depts allowed to create CMs
+const ALLOWED_SLUGS = [DepartmentSlug.Vendas, DepartmentSlug.Pricing]
+
+// Suggested first dept based on item type
+function getSuggestedFirstSlug(isNewItem: boolean): string {
+  return isNewItem ? DepartmentSlug.EngProjetos : DepartmentSlug.Pricing
+}
 
 export function CMNewPage() {
   const navigate = useNavigate()
@@ -16,18 +25,21 @@ export function CMNewPage() {
 
   const [formData, setFormData] = useState({ title: '', description: '' })
   const [isNewItem, setIsNewItem] = useState(false)
+  const [firstDeptId, setFirstDeptId] = useState('')
   const [internalId, setInternalId] = useState('')
   const [criticalAnalysisUrl, setCriticalAnalysisUrl] = useState('')
   const [error, setError] = useState<string | null>(null)
 
-  if (profile?.department?.slug !== 'vendas') {
+  const deptSlug = profile?.department?.slug ?? ''
+
+  if (!ALLOWED_SLUGS.includes(deptSlug as any)) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '5rem 0', textAlign: 'center' }}>
         <div style={{ width: 48, height: 48, borderRadius: '50%', backgroundColor: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.875rem' }}>
           <AlertCircle size={22} style={{ color: '#dc2626' }} />
         </div>
         <h2 style={{ fontSize: 17, fontWeight: 600, color: '#0f172a' }}>Acesso Negado</h2>
-        <p style={{ fontSize: 13, color: '#64748b', marginTop: 6 }}>Apenas o departamento de Vendas pode criar CMs</p>
+        <p style={{ fontSize: 13, color: '#64748b', marginTop: 6 }}>Apenas Vendas e Pricing podem criar CMs</p>
         <button onClick={() => navigate(-1)} style={{ marginTop: '1rem', fontSize: 13, color: '#2563eb', background: 'none', border: 'none', cursor: 'pointer' }}>
           Voltar
         </button>
@@ -35,29 +47,46 @@ export function CMNewPage() {
     )
   }
 
+  // When item type changes, reset firstDeptId to the suggested default
+  const handleSetIsNewItem = (value: boolean) => {
+    setIsNewItem(value)
+    const suggested = departments.find(d => d.slug === getSuggestedFirstSlug(value))
+    setFirstDeptId(suggested?.id ?? '')
+  }
+
+  // Initialise firstDeptId once departments load (runs once on first render after load)
+  const suggestedFirstSlug = getSuggestedFirstSlug(isNewItem)
+  if (!firstDeptId && departments.length > 0) {
+    const suggested = departments.find(d => d.slug === suggestedFirstSlug)
+    if (suggested) setFirstDeptId(suggested.id)
+  }
+
+  const selectedFirstDept = departments.find(d => d.id === firstDeptId)
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
     if (!formData.title.trim())       { setError('Título é obrigatório'); return }
     if (!formData.description.trim()) { setError('Descrição é obrigatória'); return }
+    if (!firstDeptId)                 { setError('Selecione o departamento de destino inicial'); return }
     try {
       const result = await createMutation.mutateAsync({
         title: formData.title,
         description: formData.description,
         createdBy: profile!.id,
         isNewItem,
+        firstDeptId,
         internalId:          internalId.trim() || undefined,
         criticalAnalysisUrl: criticalAnalysisUrl.trim() || undefined,
       })
       toast.success('CM criada com sucesso!')
 
-      const targetSlug = isNewItem ? 'eng_projetos' : 'pricing'
-      const targetDept = departments.find((d) => d.slug === targetSlug)
+      const targetDept = departments.find(d => d.id === firstDeptId)
       if (targetDept) {
         notifyCM({
           cm:           result,
           toDept:       targetDept,
-          fromDeptName: profile?.department?.name ?? 'Vendas',
+          fromDeptName: profile?.department?.name ?? '',
           actorName:    profile?.full_name ?? 'Desconhecido',
           eventType:    'created',
         })
@@ -155,15 +184,16 @@ export function CMNewPage() {
             </div>
           </div>
 
+          {/* Item type */}
           <div>
             <p style={{ fontSize: 13, fontWeight: 500, color: '#374151', marginBottom: '0.5rem' }}>
               Tipo de item <span style={{ color: '#ef4444' }}>*</span>
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.625rem' }}>
-              {/* Não — Item existente */}
+              {/* Item existente */}
               <button
                 type="button"
-                onClick={() => setIsNewItem(false)}
+                onClick={() => handleSetIsNewItem(false)}
                 style={{
                   position: 'relative',
                   display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '0.375rem',
@@ -174,32 +204,24 @@ export function CMNewPage() {
                   boxShadow: isNewItem ? 'none' : '0 0 0 3px rgba(37,99,235,0.08)',
                 }}
               >
-                <div style={{
-                  width: 32, height: 32, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  backgroundColor: isNewItem ? '#f1f5f9' : '#dbeafe',
-                  transition: 'background-color 0.15s',
-                }}>
+                <div style={{ width: 32, height: 32, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: isNewItem ? '#f1f5f9' : '#dbeafe', transition: 'background-color 0.15s' }}>
                   <RefreshCw size={16} style={{ color: isNewItem ? '#94a3b8' : '#2563eb' }} />
                 </div>
                 <div>
                   <p style={{ fontSize: 13, fontWeight: 600, color: isNewItem ? '#64748b' : '#1d4ed8', margin: 0 }}>Item existente</p>
-                  <p style={{ fontSize: 11, color: isNewItem ? '#94a3b8' : '#3b82f6', margin: 0, marginTop: 2 }}>Vai para Pricing</p>
+                  <p style={{ fontSize: 11, color: isNewItem ? '#94a3b8' : '#3b82f6', margin: 0, marginTop: 2 }}>Sugestão: Pricing</p>
                 </div>
                 {!isNewItem && (
-                  <div style={{
-                    position: 'absolute', top: 8, right: 8,
-                    width: 16, height: 16, borderRadius: '50%',
-                    backgroundColor: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}>
+                  <div style={{ position: 'absolute', top: 8, right: 8, width: 16, height: 16, borderRadius: '50%', backgroundColor: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
                   </div>
                 )}
               </button>
 
-              {/* Sim — Item novo */}
+              {/* Item novo */}
               <button
                 type="button"
-                onClick={() => setIsNewItem(true)}
+                onClick={() => handleSetIsNewItem(true)}
                 style={{
                   position: 'relative',
                   display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '0.375rem',
@@ -210,23 +232,15 @@ export function CMNewPage() {
                   boxShadow: !isNewItem ? 'none' : '0 0 0 3px rgba(124,58,237,0.08)',
                 }}
               >
-                <div style={{
-                  width: 32, height: 32, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  backgroundColor: !isNewItem ? '#f1f5f9' : '#ede9fe',
-                  transition: 'background-color 0.15s',
-                }}>
+                <div style={{ width: 32, height: 32, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: !isNewItem ? '#f1f5f9' : '#ede9fe', transition: 'background-color 0.15s' }}>
                   <Sparkles size={16} style={{ color: !isNewItem ? '#94a3b8' : '#7c3aed' }} />
                 </div>
                 <div>
                   <p style={{ fontSize: 13, fontWeight: 600, color: !isNewItem ? '#64748b' : '#6d28d9', margin: 0 }}>Item novo</p>
-                  <p style={{ fontSize: 11, color: !isNewItem ? '#94a3b8' : '#7c3aed', margin: 0, marginTop: 2 }}>Vai para Eng. de Projetos</p>
+                  <p style={{ fontSize: 11, color: !isNewItem ? '#94a3b8' : '#7c3aed', margin: 0, marginTop: 2 }}>Sugestão: Eng. de Projetos</p>
                 </div>
                 {isNewItem && (
-                  <div style={{
-                    position: 'absolute', top: 8, right: 8,
-                    width: 16, height: 16, borderRadius: '50%',
-                    backgroundColor: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}>
+                  <div style={{ position: 'absolute', top: 8, right: 8, width: 16, height: 16, borderRadius: '50%', backgroundColor: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
                   </div>
                 )}
@@ -234,13 +248,57 @@ export function CMNewPage() {
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '0.625rem 0.875rem', borderRadius: 8, backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', fontSize: 13, color: '#1d4ed8' }}>
-            <Info size={14} style={{ flexShrink: 0, marginTop: 1, color: '#3b82f6' }} />
-            <span>
-              Após criar, a CM será automaticamente encaminhada para{' '}
-              <strong>{isNewItem ? 'Eng. de Projetos' : 'Pricing'}</strong> para análise inicial.
-            </span>
+          {/* First dest selector */}
+          <div>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: '#374151', marginBottom: '0.375rem' }}>
+              Encaminhar inicialmente para <span style={{ color: '#ef4444' }}>*</span>
+            </label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {departments.map(dept => {
+                const isSuggested = dept.slug === suggestedFirstSlug
+                const isSelected  = dept.id === firstDeptId
+                return (
+                  <label
+                    key={dept.id}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      padding: '0.5rem 0.75rem', borderRadius: 8,
+                      border: `1.5px solid ${isSelected ? '#2563eb' : '#e2e8f0'}`,
+                      backgroundColor: isSelected ? '#eff6ff' : '#fff',
+                      cursor: 'pointer', transition: 'all 0.12s',
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name="firstDept"
+                      value={dept.id}
+                      checked={isSelected}
+                      onChange={() => setFirstDeptId(dept.id)}
+                      style={{ accentColor: '#2563eb', cursor: 'pointer', width: 14, height: 14 }}
+                    />
+                    <span style={{ flex: 1, fontSize: 13.5, fontWeight: isSelected ? 600 : 400, color: isSelected ? '#1e40af' : '#374151' }}>
+                      {dept.name}
+                    </span>
+                    {isSuggested && (
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 11, fontWeight: 600, color: '#7c3aed', backgroundColor: '#f5f3ff', border: '1px solid #ddd6fe', borderRadius: 999, padding: '0.1rem 0.45rem' }}>
+                        <Sparkles size={10} />
+                        Sugerido
+                      </span>
+                    )}
+                  </label>
+                )
+              })}
+            </div>
           </div>
+
+          {selectedFirstDept && (
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '0.625rem 0.875rem', borderRadius: 8, backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', fontSize: 13, color: '#1d4ed8' }}>
+              <Info size={14} style={{ flexShrink: 0, marginTop: 1, color: '#3b82f6' }} />
+              <span>
+                A CM será encaminhada para <strong>{selectedFirstDept.name}</strong> após a criação.
+              </span>
+            </div>
+          )}
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, paddingTop: '0.5rem', borderTop: '1px solid #f1f5f9' }}>
             <Button type="button" variant="secondary" onClick={() => navigate(-1)} disabled={createMutation.isPending}>

@@ -7,6 +7,7 @@ interface CreateCMInput {
   description: string
   createdBy: string
   isNewItem: boolean
+  firstDeptId: string
   internalId?: string
   criticalAnalysisUrl?: string
 }
@@ -21,6 +22,7 @@ export function useCreateCM() {
         p_description:           input.description,
         p_actor_id:              input.createdBy,
         p_is_new_item:           input.isNewItem,
+        p_first_dept_id:         input.firstDeptId,
         p_internal_id:           input.internalId?.trim() ?? null,
         p_critical_analysis_url: input.criticalAnalysisUrl?.trim() ?? null,
       })

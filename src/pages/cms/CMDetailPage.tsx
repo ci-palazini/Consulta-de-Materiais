@@ -7,7 +7,6 @@ import { CMStatusBadge } from '@/components/cm/CMStatusBadge'
 import { ApproveModal } from '@/components/cm/ApproveModal'
 import { RefuseModal } from '@/components/cm/RefuseModal'
 import { DispatchParallelExistingModal } from '@/components/cm/DispatchParallelExistingModal'
-import { JumpStageModal } from '@/components/cm/JumpStageModal'
 import { FinalizeModal } from '@/components/cm/FinalizeModal'
 import { ContestModal } from '@/components/cm/ContestModal'
 import { RespondToContestModal } from '@/components/cm/RespondToContestModal'
@@ -15,7 +14,7 @@ import { AttachmentsSection } from '@/components/cm/AttachmentsSection'
 import {
   AlertCircle, ArrowLeft, CheckCircle, XCircle, GitBranch,
   CheckSquare, Flag, MessageSquare, User, Building2, Calendar, Hash, FileCheck,
-  Link, Pencil, X, Check, ArrowRightCircle
+  Link, Pencil, X, Check
 } from 'lucide-react'
 import { CMWorkflowStage, DepartmentSlug } from '@/types/enums'
 import type { CMWithSteps } from '@/types/domain'
@@ -58,169 +57,106 @@ const ACTION_LABEL: Record<string, string> = {
   finalized:           'Finalizada',
 }
 
+// Suggested flow steps keyed by dept slug (null = parallel step)
 interface WorkflowStep {
-  stage: string
+  slug: string | null
   label: string
   shortLabel: string
 }
 
-interface WorkflowStageInfo {
-  flowLabel: string
-  progressLabel: string
-  stageLabel: string
-  tone: { background: string; border: string; color: string }
-}
-
 const NEW_ITEM_FLOW: WorkflowStep[] = [
-  { stage: CMWorkflowStage.NewItemProjetos,    label: 'Engenharia de Projetos', shortLabel: 'PJ' },
-  { stage: CMWorkflowStage.NewItemSuprimentos, label: 'Suprimentos',             shortLabel: 'SUP' },
-  { stage: CMWorkflowStage.NewItemParallel,    label: 'Análise Paralela',        shortLabel: 'PAR' },
-  { stage: CMWorkflowStage.NewItemCustos,      label: 'Custos',                  shortLabel: 'CUS' },
-  { stage: CMWorkflowStage.NewItemPricing,     label: 'Pricing',                 shortLabel: 'PRI' },
-  { stage: CMWorkflowStage.VendasFinalize,     label: 'Finalização em Vendas',   shortLabel: 'VEN' },
+  { slug: 'eng_projetos',  label: 'Eng. de Projetos',      shortLabel: 'PJ'  },
+  { slug: 'suprimentos',   label: 'Suprimentos',            shortLabel: 'SUP' },
+  { slug: null,            label: 'Análise Paralela',       shortLabel: 'PAR' },
+  { slug: 'custos',        label: 'Custos',                 shortLabel: 'CUS' },
+  { slug: 'pricing',       label: 'Pricing',                shortLabel: 'PRI' },
+  { slug: 'vendas',        label: 'Finalização em Vendas',  shortLabel: 'VEN' },
 ]
 
 const EXISTING_ITEM_FLOW: WorkflowStep[] = [
-  { stage: CMWorkflowStage.ExistingPricing1, label: 'Pricing (1ª análise)',    shortLabel: 'P1' },
-  { stage: CMWorkflowStage.ExistingCustos,   label: 'Custos (triagem)',        shortLabel: 'C1' },
-  { stage: CMWorkflowStage.ExistingParallel, label: 'Análise Paralela',        shortLabel: 'PAR' },
-  { stage: CMWorkflowStage.ExistingCustos2,  label: 'Custos (consolidação)',   shortLabel: 'C2' },
-  { stage: CMWorkflowStage.ExistingPricing2, label: 'Pricing (consolidação)',  shortLabel: 'P2' },
-  { stage: CMWorkflowStage.VendasFinalize,   label: 'Finalização em Vendas',   shortLabel: 'VEN' },
+  { slug: 'pricing',   label: 'Pricing',               shortLabel: 'P1'  },
+  { slug: 'custos',    label: 'Custos',                 shortLabel: 'CUS' },
+  { slug: null,        label: 'Análise Paralela',       shortLabel: 'PAR' },
+  { slug: 'pricing',   label: 'Pricing',                shortLabel: 'P2'  },
+  { slug: 'vendas',    label: 'Finalização em Vendas',  shortLabel: 'VEN' },
 ]
 
-function getWorkflowMapStage(cm: CMWithSteps): string | null {
-  if (cm.workflow_stage === CMWorkflowStage.Refused) {
-    return cm.pre_refusal_stage ?? null
+function getCurrentFlowIndex(cm: CMWithSteps, flow: WorkflowStep[]): number {
+  if (cm.workflow_stage === CMWorkflowStage.Parallel) {
+    return flow.findIndex(s => s.slug === null)
   }
-
-  if (cm.workflow_stage === CMWorkflowStage.Finalized) {
-    return CMWorkflowStage.VendasFinalize
+  if (cm.workflow_stage === CMWorkflowStage.VendasFinalize || cm.workflow_stage === CMWorkflowStage.Finalized) {
+    return flow.findIndex(s => s.slug === 'vendas')
   }
-
-  if (cm.workflow_stage === CMWorkflowStage.Contestation) {
-    return null
+  if (cm.workflow_stage === CMWorkflowStage.Open && cm.current_department) {
+    return flow.findIndex(s => s.slug === cm.current_department!.slug)
   }
-
-  return cm.workflow_stage
-}
-
-function getWorkflowStageInfo(cm: CMWithSteps): WorkflowStageInfo {
-  const flowLabel = cm.is_new_item ? 'Item Novo' : 'Item Existente'
-  const flow = cm.is_new_item ? NEW_ITEM_FLOW : EXISTING_ITEM_FLOW
-  const stepIndex = flow.findIndex((step) => step.stage === cm.workflow_stage)
-
-  if (stepIndex >= 0) {
-    return {
-      flowLabel,
-      progressLabel: `Etapa ${stepIndex + 1} de ${flow.length}`,
-      stageLabel: flow[stepIndex].label,
-      tone: { background: '#eff6ff', border: '#bfdbfe', color: '#1d4ed8' },
-    }
+  if (cm.workflow_stage === CMWorkflowStage.Refused && cm.pre_refusal_stage) {
+    // Show where it was before being refused
+    if (cm.pre_refusal_stage === CMWorkflowStage.Parallel) return flow.findIndex(s => s.slug === null)
+    if (cm.pre_refusal_stage === CMWorkflowStage.VendasFinalize) return flow.findIndex(s => s.slug === 'vendas')
   }
-
-  if (cm.workflow_stage === CMWorkflowStage.Contestation) {
-    return {
-      flowLabel,
-      progressLabel: 'Etapa especial',
-      stageLabel: 'Contestação em andamento',
-      tone: { background: '#fff7ed', border: '#fed7aa', color: '#c2410c' },
-    }
-  }
-
-  if (cm.workflow_stage === CMWorkflowStage.Refused) {
-    return {
-      flowLabel,
-      progressLabel: 'Fluxo encerrado',
-      stageLabel: 'CM recusada',
-      tone: { background: '#fef2f2', border: '#fecaca', color: '#b91c1c' },
-    }
-  }
-
-  if (cm.workflow_stage === CMWorkflowStage.Finalized) {
-    return {
-      flowLabel,
-      progressLabel: 'Fluxo concluído',
-      stageLabel: 'CM finalizada',
-      tone: { background: '#f0fdf4', border: '#bbf7d0', color: '#15803d' },
-    }
-  }
-
-  return {
-    flowLabel,
-    progressLabel: 'Etapa não mapeada',
-    stageLabel: cm.workflow_stage,
-    tone: { background: '#f8fafc', border: '#e2e8f0', color: '#475569' },
-  }
+  return -1
 }
 
 function WorkflowMap({ cm }: { cm: CMWithSteps }) {
   const flow = cm.is_new_item ? NEW_ITEM_FLOW : EXISTING_ITEM_FLOW
-  const mapStage = getWorkflowMapStage(cm)
-  const currentIndex = mapStage ? flow.findIndex((step) => step.stage === mapStage) : -1
-  const stageInfo = getWorkflowStageInfo(cm)
+  const currentIndex = getCurrentFlowIndex(cm, flow)
   const isFinalized = cm.workflow_stage === CMWorkflowStage.Finalized
-  const isRefused = cm.workflow_stage === CMWorkflowStage.Refused
-  const lastJumpStep = [...cm.steps].reverse().find((step) => step.action === 'jumped')
+  const isRefused   = cm.workflow_stage === CMWorkflowStage.Refused
+  const isContested = cm.workflow_stage === CMWorkflowStage.Contested
+
+  let statusLabel = ''
+  let statusColor = '#1d4ed8'
+  let statusBg    = '#eff6ff'
+  let statusBorder = '#bfdbfe'
+
+  if (isFinalized) { statusLabel = 'Finalizada'; statusColor = '#15803d'; statusBg = '#f0fdf4'; statusBorder = '#bbf7d0' }
+  else if (isRefused) { statusLabel = 'Recusada'; statusColor = '#b91c1c'; statusBg = '#fef2f2'; statusBorder = '#fecaca' }
+  else if (isContested) { statusLabel = 'Contestação em andamento'; statusColor = '#c2410c'; statusBg = '#fff7ed'; statusBorder = '#fed7aa' }
+  else if (cm.workflow_stage === CMWorkflowStage.Parallel) { statusLabel = 'Análise paralela'; statusColor = '#6d28d9'; statusBg = '#f5f3ff'; statusBorder = '#ddd6fe' }
+  else if (cm.workflow_stage === CMWorkflowStage.VendasFinalize) { statusLabel = 'Aguardando finalização'; statusColor = '#1d4ed8'; statusBg = '#eff6ff'; statusBorder = '#bfdbfe' }
+  else if (cm.current_department) { statusLabel = cm.current_department.name; statusColor = '#1d4ed8'; statusBg = '#eff6ff'; statusBorder = '#bfdbfe' }
+
+  const flowLabel = cm.is_new_item ? 'Item Novo' : 'Item Existente'
 
   return (
     <div style={{ backgroundColor: '#fff', borderRadius: 12, border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', padding: '1rem 1.25rem' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
-        <h2 style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>Mapa do Fluxo</h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <h2 style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>Fluxo Sugerido</h2>
+          <span style={{ fontSize: 11, color: '#94a3b8' }}>— referência, encaminhamento é livre</span>
+        </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-          {lastJumpStep && (
-            <span style={{
-              fontSize: 11.5,
-              fontWeight: 600,
-              padding: '0.2rem 0.55rem',
-              borderRadius: 999,
-              border: '1px solid #d8b4fe',
-              backgroundColor: '#f5f3ff',
-              color: '#6d28d9',
-            }}>
-              Pulo registrado
+          <span style={{ fontSize: 11.5, fontWeight: 600, padding: '0.2rem 0.55rem', borderRadius: 999, border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', color: '#475569' }}>
+            {flowLabel}
+          </span>
+          {statusLabel && (
+            <span style={{ fontSize: 11.5, fontWeight: 600, padding: '0.2rem 0.55rem', borderRadius: 999, border: `1px solid ${statusBorder}`, backgroundColor: statusBg, color: statusColor }}>
+              {statusLabel}
             </span>
           )}
-          <span style={{
-            fontSize: 11.5,
-            fontWeight: 600,
-            padding: '0.2rem 0.55rem',
-            borderRadius: 999,
-            border: `1px solid ${stageInfo.tone.border}`,
-            backgroundColor: stageInfo.tone.background,
-            color: stageInfo.tone.color,
-          }}>
-            Fluxo {stageInfo.flowLabel}
-          </span>
         </div>
       </div>
 
       <div style={{ display: 'flex', alignItems: 'flex-start', overflowX: 'auto', marginTop: '0.875rem', paddingBottom: '0.25rem' }}>
         {flow.map((step, index) => {
-          const isDone = isFinalized || (currentIndex >= 0 && index < currentIndex)
+          const isDone   = isFinalized || (currentIndex >= 0 && index < currentIndex)
           const isActive = currentIndex >= 0 && index === currentIndex
-          const circleBg = isDone ? '#16a34a' : isActive ? (isRefused ? '#dc2626' : '#2563eb') : '#fff'
+          const circleBg     = isDone ? '#16a34a' : isActive ? (isRefused ? '#dc2626' : '#2563eb') : '#fff'
           const circleBorder = isDone || isActive ? 'transparent' : '#cbd5e1'
-          const circleColor = isDone || isActive ? '#fff' : '#94a3b8'
-          const textColor = isActive ? '#0f172a' : isDone ? '#166534' : '#64748b'
+          const circleColor  = isDone || isActive ? '#fff' : '#94a3b8'
+          const textColor    = isActive ? '#0f172a' : isDone ? '#166534' : '#64748b'
           const connectorColor = isDone || (isFinalized && index < flow.length - 1) ? '#86efac' : '#e2e8f0'
 
           return (
-            <div key={step.stage} style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+            <div key={`${step.slug ?? 'par'}-${index}`} style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
               <div style={{ width: 86, textAlign: 'center' }}>
                 <div style={{
-                  width: 34,
-                  height: 34,
-                  margin: '0 auto',
-                  borderRadius: '50%',
-                  border: `1px solid ${circleBorder}`,
-                  backgroundColor: circleBg,
-                  color: circleColor,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: 11,
-                  fontWeight: 700,
+                  width: 34, height: 34, margin: '0 auto', borderRadius: '50%',
+                  border: `1px solid ${circleBorder}`, backgroundColor: circleBg, color: circleColor,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 11, fontWeight: 700,
                   boxShadow: isActive ? '0 0 0 3px rgba(37,99,235,0.14)' : 'none',
                 }}>
                   {isDone ? '✓' : step.shortLabel}
@@ -234,15 +170,6 @@ function WorkflowMap({ cm }: { cm: CMWithSteps }) {
           )
         })}
       </div>
-
-      <p style={{ marginTop: '0.5rem', fontSize: 12.5, color: stageInfo.tone.color }}>
-        <span style={{ fontWeight: 600 }}>{stageInfo.progressLabel}</span> · {stageInfo.stageLabel}
-      </p>
-      {lastJumpStep?.notes && (
-        <p style={{ marginTop: 4, fontSize: 12, color: '#6d28d9' }}>
-          Último pulo: {lastJumpStep.notes}
-        </p>
-      )}
     </div>
   )
 }
@@ -285,7 +212,6 @@ function ParallelBranchStatus({ cm }: { cm: CMWithSteps }) {
   )
 }
 
-// ── CM Extra Fields (internal_id + critical_analysis_url) ───────
 function CMExtraFields({ cm, isVendas }: { cm: CMWithSteps; isVendas: boolean }) {
   const updateMutation = useUpdateCMExtraFields()
   const [editing, setEditing] = useState(false)
@@ -307,7 +233,6 @@ function CMExtraFields({ cm, isVendas }: { cm: CMWithSteps; isVendas: boolean })
     setAnalysisUrl(cm.critical_analysis_url ?? '')
     setEditing(false)
   }
-
 
   return (
     <div style={{ backgroundColor: '#fff', borderRadius: 12, border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', padding: '1.25rem 1.5rem' }}>
@@ -337,7 +262,7 @@ function CMExtraFields({ cm, isVendas }: { cm: CMWithSteps; isVendas: boolean })
               onChange={(e) => setInternalId(e.target.value)}
               style={{ width: '100%', height: 34, padding: '0 0.75rem', fontSize: 13, fontFamily: 'inherit', color: '#0f172a', backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, outline: 'none', boxSizing: 'border-box' }}
               onFocus={(e) => { e.target.style.borderColor = '#2563eb'; e.target.style.boxShadow = '0 0 0 3px rgba(37,99,235,0.12)' }}
-              onBlur={(e) => { e.target.style.borderColor = '#e2e8f0'; e.target.style.boxShadow = 'none' }}
+              onBlur={(e)  => { e.target.style.borderColor = '#e2e8f0'; e.target.style.boxShadow = 'none' }}
             />
           </div>
           <div>
@@ -352,75 +277,45 @@ function CMExtraFields({ cm, isVendas }: { cm: CMWithSteps; isVendas: boolean })
               placeholder="https://..."
               style={{ width: '100%', height: 34, padding: '0 0.75rem', fontSize: 13, fontFamily: 'inherit', color: '#0f172a', backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, outline: 'none', boxSizing: 'border-box' }}
               onFocus={(e) => { e.target.style.borderColor = '#2563eb'; e.target.style.boxShadow = '0 0 0 3px rgba(37,99,235,0.12)' }}
-              onBlur={(e) => { e.target.style.borderColor = '#e2e8f0'; e.target.style.boxShadow = 'none' }}
+              onBlur={(e)  => { e.target.style.borderColor = '#e2e8f0'; e.target.style.boxShadow = 'none' }}
             />
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
-            <button
-              onClick={handleCancel}
-              disabled={updateMutation.isPending}
-              style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '0.3rem 0.75rem', fontSize: 12, fontWeight: 500, borderRadius: 7, border: '1px solid #e2e8f0', background: '#fff', color: '#64748b', cursor: 'pointer', fontFamily: 'inherit' }}
-            >
-              <X size={12} />
-              Cancelar
+            <button onClick={handleCancel} disabled={updateMutation.isPending} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '0.3rem 0.75rem', fontSize: 12, fontWeight: 500, borderRadius: 7, border: '1px solid #e2e8f0', background: '#fff', color: '#64748b', cursor: 'pointer', fontFamily: 'inherit' }}>
+              <X size={12} />Cancelar
             </button>
-            <button
-              onClick={handleSave}
-              disabled={updateMutation.isPending}
-              style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '0.3rem 0.75rem', fontSize: 12, fontWeight: 500, borderRadius: 7, border: 'none', background: '#2563eb', color: '#fff', cursor: 'pointer', fontFamily: 'inherit', opacity: updateMutation.isPending ? 0.7 : 1 }}
-            >
-              <Check size={12} />
-              Salvar
+            <button onClick={handleSave} disabled={updateMutation.isPending} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '0.3rem 0.75rem', fontSize: 12, fontWeight: 500, borderRadius: 7, border: 'none', background: '#2563eb', color: '#fff', cursor: 'pointer', fontFamily: 'inherit', opacity: updateMutation.isPending ? 0.7 : 1 }}>
+              <Check size={12} />Salvar
             </button>
           </div>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          {cm.internal_id ? (
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 3 }}>
-                <Hash size={11} style={{ color: '#94a3b8' }} />
-                <p style={{ fontSize: 10.5, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>Código de identificação</p>
-              </div>
-              <p style={{ fontSize: 13.5, fontWeight: 600, color: '#0f172a', fontFamily: 'monospace' }}>{cm.internal_id}</p>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 3 }}>
+              <Hash size={11} style={{ color: '#94a3b8' }} />
+              <p style={{ fontSize: 10.5, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>Código de identificação</p>
             </div>
-          ) : (
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 3 }}>
-                <Hash size={11} style={{ color: '#94a3b8' }} />
-                <p style={{ fontSize: 10.5, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>Código de identificação</p>
-              </div>
-              <p style={{ fontSize: 12.5, color: '#cbd5e1', fontStyle: 'italic' }}>Não informado</p>
+            {cm.internal_id
+              ? <p style={{ fontSize: 13.5, fontWeight: 600, color: '#0f172a', fontFamily: 'monospace' }}>{cm.internal_id}</p>
+              : <p style={{ fontSize: 12.5, color: '#cbd5e1', fontStyle: 'italic' }}>Não informado</p>
+            }
+          </div>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 3 }}>
+              <Link size={11} style={{ color: '#94a3b8' }} />
+              <p style={{ fontSize: 10.5, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>Análise Crítica</p>
             </div>
-          )}
-
-          {cm.critical_analysis_url ? (
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 3 }}>
-                <Link size={11} style={{ color: '#94a3b8' }} />
-                <p style={{ fontSize: 10.5, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>Análise Crítica</p>
-              </div>
-              <a
-                href={cm.critical_analysis_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ fontSize: 13, color: '#2563eb', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4, wordBreak: 'break-all' }}
-                onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
-                onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
-              >
-                Abrir documento
-                <svg width="11" height="11" viewBox="0 0 12 12" fill="none" style={{ flexShrink: 0 }}><path d="M2 10L10 2M10 2H5M10 2V7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-              </a>
-            </div>
-          ) : (
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 3 }}>
-                <Link size={11} style={{ color: '#94a3b8' }} />
-                <p style={{ fontSize: 10.5, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>Análise Crítica</p>
-              </div>
-              <p style={{ fontSize: 12.5, color: '#cbd5e1', fontStyle: 'italic' }}>URL não informada</p>
-            </div>
-          )}
+            {cm.critical_analysis_url
+              ? (
+                <a href={cm.critical_analysis_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, color: '#2563eb', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4, wordBreak: 'break-all' }} onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')} onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}>
+                  Abrir documento
+                  <svg width="11" height="11" viewBox="0 0 12 12" fill="none" style={{ flexShrink: 0 }}><path d="M2 10L10 2M10 2H5M10 2V7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                </a>
+              )
+              : <p style={{ fontSize: 12.5, color: '#cbd5e1', fontStyle: 'italic' }}>URL não informada</p>
+            }
+          </div>
         </div>
       )}
     </div>
@@ -428,20 +323,19 @@ function CMExtraFields({ cm, isVendas }: { cm: CMWithSteps; isVendas: boolean })
 }
 
 export function CMDetailPage() {
-  const { number }   = useParams<{ number: string }>()
-  const navigate     = useNavigate()
-  const { profile }  = useAuth()
+  const { number }  = useParams<{ number: string }>()
+  const navigate    = useNavigate()
+  const { profile } = useAuth()
   const { data: cm, isLoading } = useCM(number || '')
 
-  const [showApprove,           setShowApprove]           = useState(false)
-  const [showRefuse,            setShowRefuse]            = useState(false)
-  const [showApproveParallel,   setShowApproveParallel]   = useState(false)
-  const [showRefuseParallel,    setShowRefuseParallel]    = useState(false)
-  const [showDispatchParallel,  setShowDispatchParallel]  = useState(false)
-  const [showJumpStage,         setShowJumpStage]         = useState(false)
-  const [showFinalize,          setShowFinalize]          = useState(false)
-  const [showContest,           setShowContest]           = useState(false)
-  const [showRespondToContest,  setShowRespondToContest]  = useState(false)
+  const [showApprove,          setShowApprove]          = useState(false)
+  const [showRefuse,           setShowRefuse]            = useState(false)
+  const [showApproveParallel,  setShowApproveParallel]   = useState(false)
+  const [showRefuseParallel,   setShowRefuseParallel]    = useState(false)
+  const [showDispatchParallel, setShowDispatchParallel]  = useState(false)
+  const [showFinalize,         setShowFinalize]          = useState(false)
+  const [showContest,          setShowContest]           = useState(false)
+  const [showRespondToContest, setShowRespondToContest]  = useState(false)
 
   if (!number) return <NotFound />
 
@@ -455,49 +349,40 @@ export function CMDetailPage() {
 
   if (!cm) return <NotFound />
 
-  const isOpen       = cm.status === 'open'
-  const mySlug       = profile?.department?.slug
-  const myDeptId     = profile?.department_id
-  const stage        = cm.workflow_stage
+  const isOpen   = cm.status === 'open'
+  const mySlug   = profile?.department?.slug
+  const myDeptId = profile?.department_id
+  const stage    = cm.workflow_stage
 
   const myPendingBranch = (cm.parallel_branches ?? []).find(
     b => b.dept_id === myDeptId && b.status === 'pending'
   )
 
+  const iHoldTheCM = isOpen && myDeptId != null && cm.current_dept_id === myDeptId
+
   const actions = {
-    canApprove: isOpen && (
-      (stage === CMWorkflowStage.NewItemProjetos    && mySlug === DepartmentSlug.EngProjetos) ||
-      (stage === CMWorkflowStage.NewItemSuprimentos && mySlug === DepartmentSlug.Suprimentos) ||
-      (stage === CMWorkflowStage.NewItemCustos      && mySlug === DepartmentSlug.Custos) ||
-      (stage === CMWorkflowStage.NewItemPricing     && mySlug === DepartmentSlug.Pricing) ||
-      (stage === CMWorkflowStage.ExistingPricing1   && mySlug === DepartmentSlug.Pricing) ||
-      // ExistingCustos (1ª passagem) não tem approve — custos obrigatoriamente usa dispatch paralelo
-      (stage === CMWorkflowStage.ExistingCustos2    && mySlug === DepartmentSlug.Custos) ||
-      (stage === CMWorkflowStage.ExistingPricing2   && mySlug === DepartmentSlug.Pricing)
-    ),
-    canRefuse: isOpen && (
-      (stage === CMWorkflowStage.NewItemProjetos    && mySlug === DepartmentSlug.EngProjetos) ||
-      (stage === CMWorkflowStage.NewItemSuprimentos && mySlug === DepartmentSlug.Suprimentos) ||
-      (stage === CMWorkflowStage.NewItemCustos      && mySlug === DepartmentSlug.Custos) ||
-      (stage === CMWorkflowStage.NewItemPricing     && mySlug === DepartmentSlug.Pricing) ||
-      (stage === CMWorkflowStage.ExistingPricing1   && mySlug === DepartmentSlug.Pricing) ||
-      (stage === CMWorkflowStage.ExistingCustos     && mySlug === DepartmentSlug.Custos) ||
-      (stage === CMWorkflowStage.ExistingCustos2    && mySlug === DepartmentSlug.Custos) ||
-      (stage === CMWorkflowStage.ExistingPricing2   && mySlug === DepartmentSlug.Pricing)
-    ),
-    canDispatchParallelExisting: isOpen && stage === CMWorkflowStage.ExistingCustos && mySlug === DepartmentSlug.Custos,
-    canJumpStage: isOpen && (
-      (stage === CMWorkflowStage.ExistingPricing1 && mySlug === DepartmentSlug.Pricing) ||
-      (stage === CMWorkflowStage.ExistingCustos && mySlug === DepartmentSlug.Custos)
-    ),
+    // Any dept except Vendas can approve (choose next dest) or refuse — Vendas only finalizes/contests
+    canApprove: iHoldTheCM && stage !== CMWorkflowStage.Contested && mySlug !== DepartmentSlug.Vendas,
+    canRefuse:  iHoldTheCM && stage !== CMWorkflowStage.Contested && mySlug !== DepartmentSlug.Vendas,
+
+    // Any dept currently holding the CM at open stage can dispatch parallel
+    canDispatchParallel: iHoldTheCM && stage === CMWorkflowStage.Open,
+
+    // Parallel branch actions
     canApproveParallel: isOpen && !!myPendingBranch,
     canRefuseParallel:  isOpen && !!myPendingBranch,
-    canFinalize:  isOpen && stage === CMWorkflowStage.VendasFinalize && mySlug === DepartmentSlug.Vendas,
-    canContest:   mySlug === DepartmentSlug.Vendas && (
-                    (isOpen && stage === CMWorkflowStage.VendasFinalize) ||
-                    stage === CMWorkflowStage.Refused
-                  ),
-    canRespondToContest: isOpen && stage === CMWorkflowStage.Contestation && myDeptId === cm.current_dept_id,
+
+    // Only Vendas finalizes, only at vendas_finalize stage
+    canFinalize: isOpen && stage === CMWorkflowStage.VendasFinalize && mySlug === DepartmentSlug.Vendas,
+
+    // Vendas can contest at vendas_finalize or when CM is refused
+    canContest: mySlug === DepartmentSlug.Vendas && (
+      (isOpen && stage === CMWorkflowStage.VendasFinalize) ||
+      stage === CMWorkflowStage.Refused
+    ),
+
+    // Dept that was contested responds
+    canRespondToContest: isOpen && stage === CMWorkflowStage.Contested && myDeptId === cm.current_dept_id,
   }
 
   const hasAnyAction = Object.values(actions).some(Boolean)
@@ -505,7 +390,7 @@ export function CMDetailPage() {
   const deptSlug  = cm.current_department?.slug || ''
   const deptStyle = DEPT_COLORS[deptSlug] || { bg: '#f8fafc', color: '#475569' }
 
-  const isParallelStage = stage === CMWorkflowStage.NewItemParallel || stage === CMWorkflowStage.ExistingParallel
+  const isParallelStage = stage === CMWorkflowStage.Parallel
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }} className="animate-fade-in">
@@ -536,23 +421,14 @@ export function CMDetailPage() {
           <h1 style={{ fontSize: 19, fontWeight: 700, color: '#0f172a', letterSpacing: '-0.02em', lineHeight: 1.3 }}>{cm.title}</h1>
         </div>
       </div>
+
       <WorkflowMap cm={cm} />
 
       {/* Actions bar */}
       {(isOpen || actions.canContest) && hasAnyAction && (
-        <div style={{
-          backgroundColor: '#f8fafc',
-          border: '1px solid #e2e8f0',
-          borderRadius: 12,
-          padding: '0.875rem 1.125rem',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.75rem',
-          flexWrap: 'wrap',
-        }}>
+        <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12, padding: '0.875rem 1.125rem', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
           <span style={{ fontSize: 13, fontWeight: 500, color: '#0f172a', flex: 1 }}>Ações disponíveis:</span>
 
-          {/* Sequential approve/refuse */}
           {actions.canApprove && (
             <Button variant="success" size="sm" onClick={() => setShowApprove(true)}>
               <CheckCircle size={13} />
@@ -566,7 +442,6 @@ export function CMDetailPage() {
             </Button>
           )}
 
-          {/* Parallel approve/refuse */}
           {actions.canApproveParallel && (
             <Button variant="success" size="sm" onClick={() => setShowApproveParallel(true)}>
               <CheckCircle size={13} />
@@ -580,21 +455,13 @@ export function CMDetailPage() {
             </Button>
           )}
 
-          {/* Custos: dispatch parallel */}
-          {actions.canDispatchParallelExisting && (
+          {actions.canDispatchParallel && (
             <Button variant="secondary" size="sm" onClick={() => setShowDispatchParallel(true)}>
               <GitBranch size={13} />
               Análise Paralela
             </Button>
           )}
-          {actions.canJumpStage && (
-            <Button variant="secondary" size="sm" onClick={() => setShowJumpStage(true)}>
-              <ArrowRightCircle size={13} />
-              Pular Etapa
-            </Button>
-          )}
 
-          {/* Vendas: finalize & contest */}
           {actions.canFinalize && (
             <Button size="sm" onClick={() => setShowFinalize(true)}>
               <CheckSquare size={13} />
@@ -608,7 +475,6 @@ export function CMDetailPage() {
             </Button>
           )}
 
-          {/* Contested dept: respond */}
           {actions.canRespondToContest && (
             <Button variant="secondary" size="sm" onClick={() => setShowRespondToContest(true)}>
               <MessageSquare size={13} />
@@ -620,11 +486,8 @@ export function CMDetailPage() {
 
       {/* Two-column body */}
       <div style={{ display: 'flex', gap: '1.25rem', alignItems: 'flex-start' }}>
-
-        {/* Left column */}
         <div style={{ flex: '0 0 60%', minWidth: 0, display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
 
-          {/* Main info card */}
           <div style={{ backgroundColor: '#fff', borderRadius: 12, border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', padding: '1.5rem' }}>
             <h2 style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', marginBottom: '0.75rem' }}>Descrição</h2>
             <p style={{ fontSize: 13.5, color: '#64748b', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{cm.description}</p>
@@ -637,7 +500,7 @@ export function CMDetailPage() {
             </div>
 
             {/* Contestation notice */}
-            {stage === CMWorkflowStage.Contestation && cm.contest_reason && (
+            {stage === CMWorkflowStage.Contested && cm.contest_reason && (
               <div style={{ marginTop: '1.25rem', paddingTop: '1.25rem', borderTop: '1px solid #f1f5f9' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: '0.5rem' }}>
                   <Flag size={14} style={{ color: '#ea580c' }} />
@@ -653,14 +516,7 @@ export function CMDetailPage() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: '0.625rem' }}>
                   <FileCheck size={15} style={{ color: cm.viability ? '#16a34a' : '#dc2626' }} />
                   <h3 style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>Resultado</h3>
-                  <span style={{
-                    fontSize: 11.5,
-                    fontWeight: 600,
-                    padding: '0.15rem 0.6rem',
-                    borderRadius: 999,
-                    backgroundColor: cm.viability ? '#dcfce7' : '#fee2e2',
-                    color: cm.viability ? '#15803d' : '#dc2626',
-                  }}>
+                  <span style={{ fontSize: 11.5, fontWeight: 600, padding: '0.15rem 0.6rem', borderRadius: 999, backgroundColor: cm.viability ? '#dcfce7' : '#fee2e2', color: cm.viability ? '#15803d' : '#dc2626' }}>
                     {cm.viability ? 'Viável' : 'Não Viável'}
                   </span>
                 </div>
@@ -671,39 +527,25 @@ export function CMDetailPage() {
             )}
           </div>
 
-          {/* Parallel branch status */}
-          {(cm.parallel_branches ?? []).length > 0 && (
-            <ParallelBranchStatus cm={cm} />
-          )}
+          {(cm.parallel_branches ?? []).length > 0 && <ParallelBranchStatus cm={cm} />}
 
           {/* Timeline */}
           <div style={{ backgroundColor: '#fff', borderRadius: 12, border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', padding: '1.5rem' }}>
             <h2 style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', marginBottom: '1.25rem' }}>Histórico</h2>
-
             {cm.steps && cm.steps.length > 0 ? (
               <div>
                 {cm.steps.map((step, i) => {
-                  const cfg   = ACTION_CONFIG[step.action] || { bg: '#64748b', label: '?' }
-                  const label = ACTION_LABEL[step.action] || step.action
+                  const cfg    = ACTION_CONFIG[step.action] || { bg: '#64748b', label: '?' }
+                  const label  = ACTION_LABEL[step.action] || step.action
                   const isLast = i === cm.steps!.length - 1
                   return (
                     <div key={step.id} style={{ display: 'flex', gap: '0.875rem' }}>
-                      {/* Icon + line */}
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
-                        <div style={{
-                          width: 34, height: 34, borderRadius: '50%',
-                          backgroundColor: cfg.bg, color: '#fff',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontSize: 11, fontWeight: 700, flexShrink: 0,
-                        }}>
+                        <div style={{ width: 34, height: 34, borderRadius: '50%', backgroundColor: cfg.bg, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>
                           {cfg.label}
                         </div>
-                        {!isLast && (
-                          <div style={{ width: 1, flex: 1, backgroundColor: '#f1f5f9', margin: '4px 0' }} />
-                        )}
+                        {!isLast && <div style={{ width: 1, flex: 1, backgroundColor: '#f1f5f9', margin: '4px 0' }} />}
                       </div>
-
-                      {/* Content */}
                       <div style={{ flex: 1, paddingBottom: isLast ? 0 : '1.125rem' }}>
                         <p style={{ fontSize: 13.5, fontWeight: 500, color: '#0f172a', lineHeight: 1.4 }}>
                           {label}
@@ -728,17 +570,14 @@ export function CMDetailPage() {
               <p style={{ fontSize: 13, color: '#64748b' }}>Nenhum passo registrado</p>
             )}
           </div>
-
         </div>
 
-        {/* Right column — attachments + extra fields */}
         {profile && (
           <div style={{ flex: '0 0 40%', minWidth: 0, position: 'sticky', top: '1rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             <AttachmentsSection cmId={cm.id} profile={profile} />
             <CMExtraFields cm={cm} isVendas={mySlug === DepartmentSlug.Vendas} />
           </div>
         )}
-
       </div>
 
       {/* Modals */}
@@ -747,7 +586,6 @@ export function CMDetailPage() {
       {showApproveParallel  && profile && <ApproveModal cm={cm} actorId={profile.id} isParallel onClose={() => setShowApproveParallel(false)} />}
       {showRefuseParallel   && profile && <RefuseModal  cm={cm} actorId={profile.id} isParallel onClose={() => setShowRefuseParallel(false)} />}
       {showDispatchParallel && profile && <DispatchParallelExistingModal cm={cm} actorId={profile.id} onClose={() => setShowDispatchParallel(false)} />}
-      {showJumpStage        && profile && <JumpStageModal cm={cm} actorId={profile.id} onClose={() => setShowJumpStage(false)} />}
       {showFinalize         && profile && <FinalizeModal cm={cm} actorId={profile.id} onClose={() => setShowFinalize(false)} />}
       {showContest          && profile && <ContestModal  cm={cm} actorId={profile.id} onClose={() => setShowContest(false)} />}
       {showRespondToContest && profile && <RespondToContestModal cm={cm} actorId={profile.id} onClose={() => setShowRespondToContest(false)} />}

@@ -6,7 +6,6 @@ import { useDepartments } from '@/hooks/useDepartments'
 import { useAuth } from '@/hooks/useAuth'
 import { toast } from '@/store/toastStore'
 import { notifyCM } from '@/lib/msFormsNotifier'
-import { DepartmentSlug } from '@/types/enums'
 import type { CM } from '@/types/domain'
 
 interface DispatchParallelExistingModalProps {
@@ -15,33 +14,40 @@ interface DispatchParallelExistingModalProps {
   onClose: () => void
 }
 
-const EXCLUDED_SLUGS = [DepartmentSlug.Vendas, DepartmentSlug.Custos, DepartmentSlug.Pricing]
-
 export function DispatchParallelExistingModal({ cm, actorId, onClose }: DispatchParallelExistingModalProps) {
   const { data: departments = [] } = useDepartments()
   const dispatchMutation = useDispatchParallelExisting()
   const { profile } = useAuth()
 
+  const currentDeptId = profile?.department_id ?? ''
+
   const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [nextDeptId, setNextDeptId]   = useState<string>('')
   const [notes, setNotes]             = useState('')
   const [error, setError]             = useState<string | null>(null)
 
-  const options = departments.filter(d => !EXCLUDED_SLUGS.includes(d.slug as any))
+  // Depts available for parallel analysis (exclude current dept)
+  const parallelOptions = departments.filter(d => d.id !== currentDeptId)
+
+  // Depts available for consolidation (exclude current dept and those already selected for parallel)
+  const consolidationOptions = departments.filter(
+    d => d.id !== currentDeptId && !selectedIds.includes(d.id)
+  )
 
   const toggleDept = (id: string) => {
-    setSelectedIds(prev =>
-      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
-    )
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
+    // Clear consolidation if it's now in the parallel list
+    if (nextDeptId === id) setNextDeptId('')
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
-    if (selectedIds.length === 0) { setError('Selecione ao menos um departamento'); return }
+    if (selectedIds.length === 0) { setError('Selecione ao menos um departamento para análise paralela'); return }
+    if (!nextDeptId) { setError('Selecione o departamento de consolidação'); return }
     try {
-      await dispatchMutation.mutateAsync({ cmId: cm.id, deptIds: selectedIds, notes, actorId })
+      await dispatchMutation.mutateAsync({ cmId: cm.id, deptIds: selectedIds, nextDeptId, notes, actorId })
 
-      // Notificar por email cada departamento selecionado
       const fromDeptName = profile?.department?.name ?? ''
       const actorName    = profile?.full_name ?? ''
       selectedIds.forEach(deptId => {
@@ -76,33 +82,30 @@ export function DispatchParallelExistingModal({ cm, actorId, onClose }: Dispatch
         </div>
 
         {/* Body */}
-        <form onSubmit={handleSubmit} style={{ padding: '1.25rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <form onSubmit={handleSubmit} style={{ padding: '1.25rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '1.125rem' }}>
           {error && (
             <div style={{ padding: '0.625rem 0.875rem', borderRadius: 8, backgroundColor: '#fef2f2', border: '1px solid #fecaca', fontSize: 13, color: '#dc2626' }}>
               {error}
             </div>
           )}
 
+          {/* Parallel depts */}
           <div>
             <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: '#374151', marginBottom: '0.5rem' }}>
-              Departamentos para análise <span style={{ color: '#ef4444' }}>*</span>
+              Departamentos para análise simultânea <span style={{ color: '#ef4444' }}>*</span>
             </label>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {options.map(dept => {
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+              {parallelOptions.map(dept => {
                 const checked = selectedIds.includes(dept.id)
                 return (
                   <label
                     key={dept.id}
                     style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 10,
-                      padding: '0.625rem 0.875rem',
-                      borderRadius: 8,
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      padding: '0.5rem 0.75rem', borderRadius: 8,
                       border: `1.5px solid ${checked ? '#2563eb' : '#e2e8f0'}`,
                       backgroundColor: checked ? '#eff6ff' : '#fff',
-                      cursor: 'pointer',
-                      transition: 'all 0.12s',
+                      cursor: 'pointer', transition: 'all 0.12s',
                     }}
                   >
                     <input
@@ -118,6 +121,33 @@ export function DispatchParallelExistingModal({ cm, actorId, onClose }: Dispatch
                 )
               })}
             </div>
+          </div>
+
+          {/* Consolidation dept */}
+          <div>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: '#374151', marginBottom: '0.375rem' }}>
+              Após as análises, encaminhar para <span style={{ color: '#ef4444' }}>*</span>
+            </label>
+            <p style={{ fontSize: 12, color: '#94a3b8', marginBottom: '0.5rem' }}>
+              Quando todos aprovarem, a CM vai automaticamente para este departamento.
+            </p>
+            <select
+              value={nextDeptId}
+              onChange={e => setNextDeptId(e.target.value)}
+              style={{
+                width: '100%', height: 36, padding: '0 0.75rem', fontSize: 13,
+                fontFamily: 'inherit', color: nextDeptId ? '#0f172a' : '#94a3b8',
+                backgroundColor: '#fff', border: '1px solid #e2e8f0',
+                borderRadius: 8, outline: 'none', cursor: 'pointer',
+              }}
+              onFocus={(e) => { e.target.style.borderColor = '#2563eb'; e.target.style.boxShadow = '0 0 0 3px rgba(37,99,235,0.12)' }}
+              onBlur={(e)  => { e.target.style.borderColor = '#e2e8f0'; e.target.style.boxShadow = 'none' }}
+            >
+              <option value="">Selecione um departamento...</option>
+              {consolidationOptions.map(dept => (
+                <option key={dept.id} value={dept.id}>{dept.name}</option>
+              ))}
+            </select>
           </div>
 
           <div>

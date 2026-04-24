@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { X, CheckCircle } from 'lucide-react'
+import { X, CheckCircle, Sparkles } from 'lucide-react'
 import { Button, Textarea } from '@/components/ui'
 import { useApproveCM } from '@/hooks/useApproveCM'
 import { useApproveParallelBranch } from '@/hooks/useApproveParallelBranch'
@@ -7,20 +7,25 @@ import { useAuth } from '@/hooks/useAuth'
 import { useDepartments } from '@/hooks/useDepartments'
 import { toast } from '@/store/toastStore'
 import { notifyCM } from '@/lib/msFormsNotifier'
-import { supabase } from '@/lib/supabase'
-import type { CMWithSteps } from '@/types/domain'
+import type { CMWithSteps, Department } from '@/types/domain'
 
-// Maps the stage *before* approval to the slug(s) of the next department(s)
-const NEXT_DEPT_SLUGS: Record<string, string[]> = {
-  new_item_projetos:    ['suprimentos'],
-  new_item_suprimentos: ['eng_processos', 'planejamento', 'qualidade'],
-  new_item_custos:      ['pricing'],
-  new_item_pricing:     ['vendas'],
-  existing_pricing_1:   ['custos'],
-  existing_custos:      ['pricing'],
-  existing_custos_2:    ['pricing'],
-  existing_pricing_2:   ['vendas'],
-  contestation:         ['vendas'],
+// Suggested next dept based on is_new_item + current dept slug (frontend-only, no enforcement)
+function getSuggestedNextSlug(isNewItem: boolean, currentSlug: string): string | null {
+  if (isNewItem) {
+    const map: Record<string, string> = {
+      eng_projetos:  'suprimentos',
+      suprimentos:   'custos',
+      custos:        'pricing',
+      pricing:       'vendas',
+    }
+    return map[currentSlug] ?? null
+  } else {
+    const map: Record<string, string> = {
+      pricing:      'custos',
+      custos:       'pricing',
+    }
+    return map[currentSlug] ?? null
+  }
 }
 
 interface ApproveModalProps {
@@ -37,34 +42,25 @@ export function ApproveModal({ cm, actorId, isParallel = false, onClose }: Appro
   const { profile }             = useAuth()
   const { data: departments = [] } = useDepartments()
 
-  const mutation = isParallel ? approveParallelMutation : approveMutation
+  const currentSlug    = cm.current_department?.slug ?? ''
+  const suggestedSlug  = getSuggestedNextSlug(cm.is_new_item, currentSlug)
+  const otherDepts     = departments.filter(d => d.slug !== currentSlug)
+  const suggestedDept  = otherDepts.find(d => d.slug === suggestedSlug) ?? null
 
-  const [notes, setNotes] = useState('')
-  const [error, setError] = useState<string | null>(null)
-
-  const isSuprimentosDispatch = cm.workflow_stage === 'new_item_suprimentos'
+  const [selectedDeptId, setSelectedDeptId] = useState<string>(suggestedDept?.id ?? '')
+  const [notes, setNotes]                   = useState('')
+  const [error, setError]                   = useState<string | null>(null)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
-    try {
-      await mutation.mutateAsync({ cmId: cm.id, notes, actorId })
 
-      // Fire-and-forget email notifications
-      const fromDeptName = profile?.department?.name ?? ''
-      const actorName    = profile?.full_name ?? ''
+    if (isParallel) {
+      try {
+        await approveParallelMutation.mutateAsync({ cmId: cm.id, notes, actorId })
 
-      if (!isParallel) {
-        const nextSlugs = NEXT_DEPT_SLUGS[cm.workflow_stage] ?? []
-        nextSlugs.forEach(slug => {
-          const dept = departments.find(d => d.slug === slug)
-          if (dept) notifyCM({
-            cm, toDept: dept, fromDeptName, actorName, eventType: 'approved',
-            ...(slug === 'vendas' && cm.created_by ? { toUserId: cm.created_by } : {}),
-          })
-        })
-      } else {
-        // Notify other pending branches so they know one branch already resolved
+        const fromDeptName = profile?.department?.name ?? ''
+        const actorName    = profile?.full_name ?? ''
         const pendingBranches = (cm.parallel_branches ?? []).filter(
           b => b.status === 'pending' && b.dept_id !== profile?.department_id,
         )
@@ -74,20 +70,27 @@ export function ApproveModal({ cm, actorId, isParallel = false, onClose }: Appro
           }
         })
 
-        // Check if all branches are now approved and CM advanced to custos
-        const { data: updatedCm } = await supabase
-          .from('cms')
-          .select('workflow_stage, current_dept_id')
-          .eq('id', cm.id)
-          .single()
+        toast.success('Aprovação registrada com sucesso')
+        onClose()
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Erro ao aprovar')
+      }
+      return
+    }
 
-        if (
-          updatedCm?.workflow_stage === 'new_item_custos' ||
-          updatedCm?.workflow_stage === 'existing_custos_2'
-        ) {
-          const custosDept = departments.find(d => d.slug === 'custos')
-          if (custosDept) notifyCM({ cm, toDept: custosDept, fromDeptName, actorName, eventType: 'approved' })
-        }
+    if (!selectedDeptId) { setError('Selecione o departamento de destino'); return }
+
+    try {
+      await approveMutation.mutateAsync({ cmId: cm.id, toDeptId: selectedDeptId, notes, actorId })
+
+      const toDept       = departments.find((d: Department) => d.id === selectedDeptId)
+      const fromDeptName = profile?.department?.name ?? ''
+      const actorName    = profile?.full_name ?? ''
+      if (toDept) {
+        notifyCM({
+          cm, toDept, fromDeptName, actorName, eventType: 'approved',
+          ...(toDept.slug === 'vendas' && cm.created_by ? { toUserId: cm.created_by } : {}),
+        })
       }
 
       toast.success('Aprovação registrada com sucesso')
@@ -96,6 +99,8 @@ export function ApproveModal({ cm, actorId, isParallel = false, onClose }: Appro
       setError(err instanceof Error ? err.message : 'Erro ao aprovar')
     }
   }
+
+  const isPending = isParallel ? approveParallelMutation.isPending : approveMutation.isPending
 
   return (
     <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
@@ -124,9 +129,52 @@ export function ApproveModal({ cm, actorId, isParallel = false, onClose }: Appro
             </div>
           )}
 
-          {isSuprimentosDispatch && (
-            <div style={{ padding: '0.625rem 0.875rem', borderRadius: 8, backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', fontSize: 12.5, color: '#1e40af' }}>
-              Ao aprovar, a análise será encaminhada simultaneamente para <strong>Eng. de Processos</strong>, <strong>Planejamento</strong> e <strong>Qualidade</strong>.
+          {/* Dept selector — only for sequential approve */}
+          {!isParallel && (
+            <div>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: '#374151', marginBottom: '0.5rem' }}>
+                Encaminhar para <span style={{ color: '#ef4444' }}>*</span>
+              </label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {otherDepts.map(dept => {
+                  const isSuggested = dept.slug === suggestedSlug
+                  const isSelected  = dept.id === selectedDeptId
+                  return (
+                    <label
+                      key={dept.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 10,
+                        padding: '0.5rem 0.75rem',
+                        borderRadius: 8,
+                        border: `1.5px solid ${isSelected ? '#2563eb' : '#e2e8f0'}`,
+                        backgroundColor: isSelected ? '#eff6ff' : '#fff',
+                        cursor: 'pointer',
+                        transition: 'all 0.12s',
+                      }}
+                    >
+                      <input
+                        type="radio"
+                        name="toDept"
+                        value={dept.id}
+                        checked={isSelected}
+                        onChange={() => setSelectedDeptId(dept.id)}
+                        style={{ accentColor: '#2563eb', cursor: 'pointer', width: 14, height: 14 }}
+                      />
+                      <span style={{ flex: 1, fontSize: 13.5, fontWeight: isSelected ? 600 : 400, color: isSelected ? '#1e40af' : '#374151' }}>
+                        {dept.name}
+                      </span>
+                      {isSuggested && (
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 11, fontWeight: 600, color: '#7c3aed', backgroundColor: '#f5f3ff', border: '1px solid #ddd6fe', borderRadius: 999, padding: '0.1rem 0.45rem' }}>
+                          <Sparkles size={10} />
+                          Sugerido
+                        </span>
+                      )}
+                    </label>
+                  )
+                })}
+              </div>
             </div>
           )}
 
@@ -143,10 +191,10 @@ export function ApproveModal({ cm, actorId, isParallel = false, onClose }: Appro
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, paddingTop: 4 }}>
-            <Button type="button" variant="secondary" onClick={onClose} disabled={mutation.isPending}>
+            <Button type="button" variant="secondary" onClick={onClose} disabled={isPending}>
               Cancelar
             </Button>
-            <Button type="submit" variant="success" isLoading={mutation.isPending}>
+            <Button type="submit" variant="success" isLoading={isPending}>
               <CheckCircle size={14} />
               Aprovar
             </Button>

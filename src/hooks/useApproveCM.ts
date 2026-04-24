@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase'
 
 interface ApproveCMInput {
   cmId: string
+  toDeptId: string
   notes: string
   actorId: string
 }
@@ -13,9 +14,10 @@ export function useApproveCM() {
   return useMutation({
     mutationFn: async (input: ApproveCMInput) => {
       const { data, error } = await supabase.rpc('approve_cm', {
-        p_cm_id:    input.cmId,
-        p_notes:    input.notes,
-        p_actor_id: input.actorId,
+        p_cm_id:      input.cmId,
+        p_to_dept_id: input.toDeptId,
+        p_notes:      input.notes,
+        p_actor_id:   input.actorId,
       })
       if (error) throw error
       return data
