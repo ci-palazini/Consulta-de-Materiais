@@ -115,8 +115,8 @@ export function RespondToContestModal({ cm, actorId, onClose }: RespondToContest
             </label>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               {([
-                { value: 'ok' as const,      icon: CheckCircle, label: 'Confirmo a análise',  activeBg: '#f0fdf4', activeBorder: '#16a34a', activeColor: '#15803d' },
-                { value: 'refused' as const, icon: XCircle,     label: 'Reconsidero a análise', activeBg: '#fef2f2', activeBorder: '#dc2626', activeColor: '#dc2626' },
+                { value: 'ok' as const,      icon: CheckCircle, label: 'Aceito reconsiderar',   activeBg: '#f0fdf4', activeBorder: '#16a34a', activeColor: '#15803d' },
+                { value: 'refused' as const, icon: XCircle,     label: 'Mantenho minha análise', activeBg: '#fef2f2', activeBorder: '#dc2626', activeColor: '#dc2626' },
               ]).map(({ value, icon: Icon, label, activeBg, activeBorder, activeColor }) => {
                 const isSelected = response === value
                 return (
@@ -159,9 +159,21 @@ export function RespondToContestModal({ cm, actorId, onClose }: RespondToContest
             />
           </div>
 
-          <div style={{ padding: '0.625rem 0.875rem', borderRadius: 8, backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', fontSize: 12.5, color: '#1e40af' }}>
-            Sua resposta será enviada de volta para Vendas, que tomará a decisão final sobre a CM.
-          </div>
+          {response === 'ok' && (
+            <div style={{ padding: '0.625rem 0.875rem', borderRadius: 8, backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', fontSize: 12.5, color: '#15803d' }}>
+              A CM voltará para seu departamento no fluxo normal. Você poderá encaminhá-la para qualquer departamento ou para Vendas encerrar.
+            </div>
+          )}
+          {response === 'refused' && (
+            <div style={{ padding: '0.625rem 0.875rem', borderRadius: 8, backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', fontSize: 12.5, color: '#1e40af' }}>
+              A CM voltará para Vendas com sua resposta, mantendo sua análise original.
+            </div>
+          )}
+          {!response && (
+            <div style={{ padding: '0.625rem 0.875rem', borderRadius: 8, backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', fontSize: 12.5, color: '#64748b' }}>
+              Selecione sua resposta acima para continuar.
+            </div>
+          )}
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, paddingTop: 4 }}>
             <Button type="button" variant="secondary" onClick={onClose} disabled={respondMutation.isPending}>
