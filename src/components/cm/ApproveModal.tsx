@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { X, CheckCircle, Sparkles } from 'lucide-react'
+import { X, CheckCircle } from 'lucide-react'
 import { Button, Textarea } from '@/components/ui'
 import { useApproveCM } from '@/hooks/useApproveCM'
 import { useApproveParallelBranch } from '@/hooks/useApproveParallelBranch'
@@ -8,25 +8,6 @@ import { useDepartments } from '@/hooks/useDepartments'
 import { toast } from '@/store/toastStore'
 import { notifyCM } from '@/lib/msFormsNotifier'
 import type { CMWithSteps, Department } from '@/types/domain'
-
-// Suggested next dept based on is_new_item + current dept slug (frontend-only, no enforcement)
-function getSuggestedNextSlug(isNewItem: boolean, currentSlug: string): string | null {
-  if (isNewItem) {
-    const map: Record<string, string> = {
-      eng_projetos:  'suprimentos',
-      suprimentos:   'custos',
-      custos:        'pricing',
-      pricing:       'vendas',
-    }
-    return map[currentSlug] ?? null
-  } else {
-    const map: Record<string, string> = {
-      pricing:      'custos',
-      custos:       'pricing',
-    }
-    return map[currentSlug] ?? null
-  }
-}
 
 interface ApproveModalProps {
   cm: CMWithSteps
@@ -42,12 +23,10 @@ export function ApproveModal({ cm, actorId, isParallel = false, onClose }: Appro
   const { profile }             = useAuth()
   const { data: departments = [] } = useDepartments()
 
-  const currentSlug    = cm.current_department?.slug ?? ''
-  const suggestedSlug  = getSuggestedNextSlug(cm.is_new_item, currentSlug)
-  const otherDepts     = departments.filter(d => d.slug !== currentSlug)
-  const suggestedDept  = otherDepts.find(d => d.slug === suggestedSlug) ?? null
+  const currentSlug = cm.current_department?.slug ?? ''
+  const otherDepts  = departments.filter(d => d.slug !== currentSlug)
 
-  const [selectedDeptId, setSelectedDeptId] = useState<string>(suggestedDept?.id ?? '')
+  const [selectedDeptId, setSelectedDeptId] = useState<string>('')
   const [notes, setNotes]                   = useState('')
   const [error, setError]                   = useState<string | null>(null)
 
@@ -137,8 +116,7 @@ export function ApproveModal({ cm, actorId, isParallel = false, onClose }: Appro
               </label>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {otherDepts.map(dept => {
-                  const isSuggested = dept.slug === suggestedSlug
-                  const isSelected  = dept.id === selectedDeptId
+                  const isSelected = dept.id === selectedDeptId
                   return (
                     <label
                       key={dept.id}
@@ -165,12 +143,6 @@ export function ApproveModal({ cm, actorId, isParallel = false, onClose }: Appro
                       <span style={{ flex: 1, fontSize: 13.5, fontWeight: isSelected ? 600 : 400, color: isSelected ? '#1e40af' : '#374151' }}>
                         {dept.name}
                       </span>
-                      {isSuggested && (
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 11, fontWeight: 600, color: '#7c3aed', backgroundColor: '#f5f3ff', border: '1px solid #ddd6fe', borderRadius: 999, padding: '0.1rem 0.45rem' }}>
-                          <Sparkles size={10} />
-                          Sugerido
-                        </span>
-                      )}
                     </label>
                   )
                 })}
