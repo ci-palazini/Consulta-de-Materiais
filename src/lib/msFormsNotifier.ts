@@ -11,6 +11,8 @@ export interface NotifyCMPayload {
   eventType: 'created' | 'forwarded' | 'approved' | 'refused' | 'dispatched_parallel' | 'jumped' | 'contested' | 'contest_response'
   /** Quando definido, o email vai apenas para este usuário em vez de todo o departamento */
   toUserId?: string
+  /** Emails adicionais que sempre recebem a notificação, independente do destinatário principal */
+  extraEmails?: string[]
 }
 
 function buildBodyHtml(payload: NotifyCMPayload): string {
@@ -139,6 +141,7 @@ export async function notifyCM(payload: NotifyCMPayload): Promise<void> {
         subject:   eventLabel,
         body_html: body,
         ...(isLocalhost && { dev_mode: true }),
+        ...(payload.extraEmails?.length && { extra_emails: payload.extraEmails }),
       },
     })
 

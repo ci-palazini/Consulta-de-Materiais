@@ -44,6 +44,7 @@ export function RefuseModal({ cm, actorId, isParallel = false, onClose }: Refuse
         notifyCM({
           cm, toDept: vendasDept, fromDeptName, actorName, notes, eventType: 'refused',
           ...(cm.created_by ? { toUserId: cm.created_by } : {}),
+          extraEmails: ['Melhoria.Continua@br.spiraxsarco.com'],
         })
       }
 

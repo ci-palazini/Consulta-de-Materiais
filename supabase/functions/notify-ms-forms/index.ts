@@ -120,7 +120,7 @@ serve(async (req) => {
   }
 
   try {
-    const { to_dept_id, to_user_id, subject, body_html, dev_mode } = await req.json()
+    const { to_dept_id, to_user_id, subject, body_html, dev_mode, extra_emails } = await req.json()
 
     if ((!to_dept_id && !to_user_id) || !subject || !body_html) {
       return new Response(
@@ -136,6 +136,11 @@ serve(async (req) => {
       to = await getEmailByUserId(to_user_id)
     } else {
       to = await getEmailsByDept(to_dept_id)
+    }
+
+    if (Array.isArray(extra_emails) && extra_emails.length > 0) {
+      const existing = to ? to.split(';').filter(Boolean) : []
+      to = toRecipientList([...existing, ...extra_emails].map(email => ({ email })))
     }
 
     if (!to) {
