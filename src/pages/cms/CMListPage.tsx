@@ -19,12 +19,23 @@ export function CMListPage() {
   const { data: allCMs, isLoading } = useCMs()
   const [search, setSearch]           = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+  const [requesterFilter, setRequesterFilter] = useState('all')
+
+  const requesterOptions = Array.from(
+    (allCMs ?? []).reduce((map, cm) => {
+      if (cm.creator) map.set(cm.creator.id, cm.creator.full_name)
+      return map
+    }, new Map<string, string>())
+  )
+    .sort((a, b) => a[1].localeCompare(b[1], 'pt-BR'))
+    .map(([id, fullName]) => ({ id, fullName }))
 
   const filtered = allCMs?.filter((cm) => {
     const q = search.toLowerCase()
     const matchSearch = !q || cm.number.toLowerCase().includes(q) || cm.title.toLowerCase().includes(q) || cm.description.toLowerCase().includes(q) || (cm.internal_id?.toLowerCase().includes(q) ?? false)
     const matchStatus = statusFilter === 'all' || (statusFilter === 'open' && cm.status === 'open') || (statusFilter === 'closed' && cm.status !== 'open')
-    return matchSearch && matchStatus
+    const matchRequester = requesterFilter === 'all' || cm.created_by === requesterFilter
+    return matchSearch && matchStatus && matchRequester
   }) || []
 
   const canCreateCM = profile?.department?.slug === 'vendas' || profile?.department?.slug === 'pricing'
@@ -83,6 +94,36 @@ export function CMListPage() {
             onFocus={(e) => { e.target.style.borderColor = '#2563eb'; e.target.style.backgroundColor = '#fff'; e.target.style.boxShadow = '0 0 0 3px rgba(37,99,235,0.1)' }}
             onBlur={(e)  => { e.target.style.borderColor = '#e2e8f0'; e.target.style.backgroundColor = '#f8fafc'; e.target.style.boxShadow = 'none' }}
           />
+        </div>
+
+        {/* Requester filter */}
+        <div style={{ minWidth: 220 }}>
+          <select
+            value={requesterFilter}
+            onChange={(e) => setRequesterFilter(e.target.value)}
+            style={{
+              width: '100%',
+              height: 36,
+              padding: '0 12px',
+              fontSize: 13,
+              fontFamily: 'inherit',
+              color: '#0f172a',
+              backgroundColor: '#f8fafc',
+              border: '1px solid #e2e8f0',
+              borderRadius: 8,
+              outline: 'none',
+              cursor: 'pointer',
+            }}
+            onFocus={(e) => { e.target.style.borderColor = '#2563eb'; e.target.style.backgroundColor = '#fff'; e.target.style.boxShadow = '0 0 0 3px rgba(37,99,235,0.1)' }}
+            onBlur={(e)  => { e.target.style.borderColor = '#e2e8f0'; e.target.style.backgroundColor = '#f8fafc'; e.target.style.boxShadow = 'none' }}
+          >
+            <option value="all">Todos os solicitantes</option>
+            {requesterOptions.map((requester) => (
+              <option key={requester.id} value={requester.id}>
+                {requester.fullName}
+              </option>
+            ))}
+          </select>
         </div>
 
         {/* Status tabs */}
