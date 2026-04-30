@@ -29,9 +29,9 @@ export function DispatchParallelExistingModal({ cm, actorId, onClose }: Dispatch
   // Depts available for parallel analysis (exclude current dept)
   const parallelOptions = departments.filter(d => d.id !== currentDeptId)
 
-  // Depts available for consolidation (exclude current dept and those already selected for parallel)
+  // Depts available for consolidation (exclude only those already selected for parallel)
   const consolidationOptions = departments.filter(
-    d => d.id !== currentDeptId && !selectedIds.includes(d.id)
+    d => !selectedIds.includes(d.id)
   )
 
   const toggleDept = (id: string) => {
