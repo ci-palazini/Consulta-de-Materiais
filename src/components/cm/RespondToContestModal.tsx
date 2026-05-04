@@ -37,7 +37,7 @@ export function RespondToContestModal({ cm, actorId, onClose }: RespondToContest
       const fromDeptName = profile?.department?.name ?? ''
       const actorName    = profile?.full_name ?? ''
 
-      // Email para Vendas
+      // Email para Vendas — apenas quem abriu a CM
       const vendasDept = departments.find(d => d.slug === 'vendas')
       if (vendasDept) {
         notifyCM({
@@ -47,6 +47,7 @@ export function RespondToContestModal({ cm, actorId, onClose }: RespondToContest
           actorName,
           notes,
           eventType:    'contest_response',
+          ...(cm.created_by ? { toUserId: cm.created_by } : {}),
         })
       }
 
