@@ -4,6 +4,7 @@ import { NotificationDropdown } from '@/components/notifications/NotificationDro
 const ROUTE_TITLES: Record<string, string> = {
   '/dashboard': 'Dashboard',
   '/cms':       'Consultas de Materiais',
+  '/open-cms':  'Consultas Abertas (Visão Rápida)',
   '/cms/new':   'Nova Consulta',
   '/admin':     'Administração',
   '/profile':   'Perfil',

@@ -35,6 +35,11 @@ const router = createBrowserRouter([
         HydrateFallback: LoadingFallback,
       },
       {
+        path: 'open-cms',
+        lazy: () => import('./pages/cms/CMOpenOverviewPage').then(m => ({ Component: m.CMOpenOverviewPage })),
+        HydrateFallback: LoadingFallback,
+      },
+      {
         path: 'cms/new',
         lazy: () => import('./pages/cms/CMNewPage').then(m => ({ Component: m.CMNewPage })),
         HydrateFallback: LoadingFallback,

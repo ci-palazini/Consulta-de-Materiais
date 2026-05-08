@@ -353,6 +353,10 @@ export function CMDetailPage() {
   const mySlug   = profile?.department?.slug
   const myDeptId = profile?.department_id
   const stage    = cm.workflow_stage
+  const isPricingCreatorCM =
+    mySlug === DepartmentSlug.Pricing &&
+    myDeptId != null &&
+    cm.creator?.department_id === myDeptId
 
   const myPendingBranch = (cm.parallel_branches ?? []).find(
     b => b.dept_id === myDeptId && b.status === 'pending'
@@ -372,8 +376,10 @@ export function CMDetailPage() {
     canApproveParallel: isOpen && !!myPendingBranch,
     canRefuseParallel:  isOpen && !!myPendingBranch,
 
-    // Only Vendas finalizes, only at vendas_finalize stage
-    canFinalize: isOpen && stage === CMWorkflowStage.VendasFinalize && mySlug === DepartmentSlug.Vendas,
+    // Vendas always finalizes; Pricing can finalize CMs opened by Pricing
+    canFinalize: isOpen && stage === CMWorkflowStage.VendasFinalize && (
+      mySlug === DepartmentSlug.Vendas || isPricingCreatorCM
+    ),
 
     // Vendas can contest at vendas_finalize or when CM is refused
     canContest: mySlug === DepartmentSlug.Vendas && (

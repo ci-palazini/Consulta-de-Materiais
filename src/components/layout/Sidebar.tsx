@@ -1,11 +1,12 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
-import { LayoutDashboard, FileText, Settings, LogOut, Menu, X, Plus, User } from 'lucide-react'
+import { LayoutDashboard, FileText, List, Settings, LogOut, Menu, X, Plus, User } from 'lucide-react'
 import { useState, useCallback } from 'react'
 
 const NAV = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/cms',       label: 'Consultas',  icon: FileText },
+  { path: '/open-cms',  label: 'Visão Rápida', icon: List },
 ]
 const ADMIN_ITEM   = { path: '/admin',   label: 'Administração', icon: Settings }
 const PROFILE_ITEM = { path: '/profile', label: 'Meu Perfil',    icon: User }
