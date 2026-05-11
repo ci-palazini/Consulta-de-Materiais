@@ -15,7 +15,7 @@ const corsHeaders = {
 }
 
 const RETRYABLE_STATUS = new Set([408, 425, 429, 500, 502, 503, 504])
-const RETRY_DELAYS_MS = [800, 1800]
+const RETRY_DELAYS_MS = [1000, 4000, 12000]
 const REQUEST_TIMEOUT_MS = 15000
 
 function delay(ms: number) {
