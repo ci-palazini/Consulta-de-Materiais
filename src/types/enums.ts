@@ -2,6 +2,7 @@ export const CMStatus = {
   Open: 'open',
   ClosedViable: 'closed_viable',
   ClosedNotViable: 'closed_not_viable',
+  ClosedBySystem: 'closed_by_system',
 } as const
 
 export const CMAction = {
@@ -15,6 +16,7 @@ export const CMAction = {
   Contested: 'contested',
   ContestResponse: 'contest_response',
   Finalized: 'finalized',
+  AutoFinalized: 'auto_finalized',
 } as const
 
 export const CMWorkflowStage = {

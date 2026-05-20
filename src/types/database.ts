@@ -74,7 +74,7 @@ export interface Database {
           number: string
           title: string
           description: string
-          status: 'open' | 'closed_viable' | 'closed_not_viable'
+          status: 'open' | 'closed_viable' | 'closed_not_viable' | 'closed_by_system'
           current_dept_id: string | null
           created_by: string
           viability: boolean | null

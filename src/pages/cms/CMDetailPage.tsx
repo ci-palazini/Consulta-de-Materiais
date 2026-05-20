@@ -42,6 +42,7 @@ const ACTION_CONFIG: Record<string, { bg: string; label: string }> = {
   contested:            { bg: '#ea580c', label: '⚑' },
   contest_response:     { bg: '#0891b2', label: '↩' },
   finalized:            { bg: '#16a34a', label: 'F' },
+  auto_finalized:       { bg: '#64748b', label: '⏱' },
 }
 
 const ACTION_LABEL: Record<string, string> = {
@@ -55,6 +56,7 @@ const ACTION_LABEL: Record<string, string> = {
   contested:           'Etapa contestada por Vendas',
   contest_response:    'Resposta à contestação',
   finalized:           'Finalizada',
+  auto_finalized:      'Finalizado pelo sistema',
 }
 
 // Suggested flow steps keyed by dept slug (null = parallel step)
@@ -513,15 +515,26 @@ export function CMDetailPage() {
             {/* Finalization result */}
             {cm.status !== 'open' && (
               <div style={{ marginTop: '1.25rem', paddingTop: '1.25rem', borderTop: '1px solid #f1f5f9' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: '0.625rem' }}>
-                  <FileCheck size={15} style={{ color: cm.viability ? '#16a34a' : '#dc2626' }} />
-                  <h3 style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>Resultado</h3>
-                  <span style={{ fontSize: 11.5, fontWeight: 600, padding: '0.15rem 0.6rem', borderRadius: 999, backgroundColor: cm.viability ? '#dcfce7' : '#fee2e2', color: cm.viability ? '#15803d' : '#dc2626' }}>
-                    {cm.viability ? 'Viável' : 'Não Viável'}
-                  </span>
-                </div>
-                {cm.finalization_notes && (
-                  <p style={{ fontSize: 13, color: '#64748b', fontStyle: 'italic' }}>"{cm.finalization_notes}"</p>
+                {cm.status === 'closed_by_system' ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 15 }}>⏱</span>
+                    <span style={{ fontSize: 12.5, color: '#64748b', fontStyle: 'italic' }}>
+                      Finalizado automaticamente pelo sistema após 5 dias sem movimentação
+                    </span>
+                  </div>
+                ) : (
+                  <>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: '0.625rem' }}>
+                      <FileCheck size={15} style={{ color: cm.viability ? '#16a34a' : '#dc2626' }} />
+                      <h3 style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>Resultado</h3>
+                      <span style={{ fontSize: 11.5, fontWeight: 600, padding: '0.15rem 0.6rem', borderRadius: 999, backgroundColor: cm.viability ? '#dcfce7' : '#fee2e2', color: cm.viability ? '#15803d' : '#dc2626' }}>
+                        {cm.viability ? 'Viável' : 'Não Viável'}
+                      </span>
+                    </div>
+                    {cm.finalization_notes && (
+                      <p style={{ fontSize: 13, color: '#64748b', fontStyle: 'italic' }}>"{cm.finalization_notes}"</p>
+                    )}
+                  </>
                 )}
               </div>
             )}
@@ -557,7 +570,7 @@ export function CMDetailPage() {
                           <p style={{ fontSize: 12, color: '#64748b', marginTop: 3, fontStyle: 'italic' }}>"{step.notes}"</p>
                         )}
                         <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 4 }}>
-                          por <span style={{ fontWeight: 500, color: '#64748b' }}>{step.actor?.full_name}</span>
+                          por <span style={{ fontWeight: 500, color: '#64748b' }}>{step.actor?.full_name ?? 'Sistema'}</span>
                           {' · '}
                           {new Date(step.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                         </p>

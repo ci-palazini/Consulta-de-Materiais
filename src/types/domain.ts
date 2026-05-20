@@ -55,7 +55,7 @@ export interface CMStep {
   from_dept_id: string | null
   to_dept_id: string | null
   action: CMActionType
-  actor_id: string
+  actor_id: string | null
   notes: string | null
   created_at: string
   // Denormalized for convenience

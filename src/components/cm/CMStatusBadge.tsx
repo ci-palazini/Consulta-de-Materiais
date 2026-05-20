@@ -1,10 +1,11 @@
 import { Badge } from '@/components/ui'
 import type { CMStatusType } from '@/types/enums'
 
-const STATUS_CONFIG: Record<CMStatusType, { label: string; variant: 'info' | 'success' | 'danger' }> = {
-  open:              { label: 'Em Andamento', variant: 'info' },
-  closed_viable:     { label: 'Viável',       variant: 'success' },
-  closed_not_viable: { label: 'Não Viável',   variant: 'danger' },
+const STATUS_CONFIG: Record<CMStatusType, { label: string; variant: 'info' | 'success' | 'danger' | 'default' }> = {
+  open:              { label: 'Em Andamento',        variant: 'info' },
+  closed_viable:     { label: 'Viável',              variant: 'success' },
+  closed_not_viable: { label: 'Não Viável',          variant: 'danger' },
+  closed_by_system:  { label: 'Finalizado pelo Sistema', variant: 'default' },
 }
 
 export function CMStatusBadge({ status }: { status: CMStatusType }) {

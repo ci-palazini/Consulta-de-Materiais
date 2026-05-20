@@ -32,4 +32,5 @@ export const STATUS_COLORS: Record<string, string> = {
   open: 'bg-blue-100 text-blue-800',
   closed_viable: 'bg-green-100 text-green-800',
   closed_not_viable: 'bg-red-100 text-red-800',
+  closed_by_system: 'bg-slate-100 text-slate-600',
 }
