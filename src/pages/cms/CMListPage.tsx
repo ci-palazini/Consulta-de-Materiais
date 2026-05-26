@@ -1,10 +1,11 @@
-import { useState } from 'react'
-import { useCMs } from '@/hooks/useCMs'
+import { useState, useEffect } from 'react'
+import { useCMsPaginated, PAGE_SIZE } from '@/hooks/useCMsPaginated'
+import { useCMCreators } from '@/hooks/useCMCreators'
 import { Button } from '@/components/ui'
 import { CMCard } from '@/components/cm/CMCard'
 import { useAuth } from '@/hooks/useAuth'
 import { Link } from 'react-router-dom'
-import { Plus, Search, Inbox } from 'lucide-react'
+import { Plus, Search, Inbox, ChevronLeft, ChevronRight } from 'lucide-react'
 
 type StatusFilter = 'all' | 'open' | 'closed'
 
@@ -16,29 +17,41 @@ const STATUS_TABS: { value: StatusFilter; label: string }[] = [
 
 export function CMListPage() {
   const { profile } = useAuth()
-  const { data: allCMs, isLoading } = useCMs()
-  const [search, setSearch]           = useState('')
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+  const [search, setSearch]               = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [statusFilter, setStatusFilter]   = useState<StatusFilter>('all')
   const [requesterFilter, setRequesterFilter] = useState('all')
+  const [page, setPage]                   = useState(0)
 
-  const requesterOptions = Array.from(
-    (allCMs ?? []).reduce((map, cm) => {
-      if (cm.creator) map.set(cm.creator.id, cm.creator.full_name)
-      return map
-    }, new Map<string, string>())
-  )
-    .sort((a, b) => a[1].localeCompare(b[1], 'pt-BR'))
-    .map(([id, fullName]) => ({ id, fullName }))
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search)
+      setPage(0)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [search])
 
-  const filtered = allCMs?.filter((cm) => {
-    const q = search.toLowerCase()
-    const matchSearch = !q || cm.number.toLowerCase().includes(q) || cm.title.toLowerCase().includes(q) || cm.description.toLowerCase().includes(q) || (cm.internal_id?.toLowerCase().includes(q) ?? false)
-    const matchStatus = statusFilter === 'all' || (statusFilter === 'open' && cm.status === 'open') || (statusFilter === 'closed' && cm.status !== 'open')
-    const matchRequester = requesterFilter === 'all' || cm.created_by === requesterFilter
-    return matchSearch && matchStatus && matchRequester
-  }) || []
+  // Reset page when filters change
+  useEffect(() => { setPage(0) }, [statusFilter, requesterFilter])
+
+  const { data, isLoading, isFetching } = useCMsPaginated(page, {
+    search: debouncedSearch,
+    status: statusFilter,
+    createdBy: requesterFilter,
+  })
+
+  const { data: creators } = useCMCreators()
+
+  const cms      = data?.cms ?? []
+  const total    = data?.total ?? 0
+  const pageCount = Math.ceil(total / PAGE_SIZE)
+  const from      = total === 0 ? 0 : page * PAGE_SIZE + 1
+  const to        = Math.min((page + 1) * PAGE_SIZE, total)
 
   const canCreateCM = profile?.department?.slug === 'vendas' || profile?.department?.slug === 'pricing'
+
+  const hasActiveFilter = debouncedSearch || statusFilter !== 'all' || requesterFilter !== 'all'
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }} className="animate-fade-in">
@@ -46,7 +59,13 @@ export function CMListPage() {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 700, color: '#0f172a', letterSpacing: '-0.02em' }}>Consultas de Materiais</h1>
-          <p style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>{allCMs?.length || 0} consultas no total</p>
+          <p style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>
+            {total > 0
+              ? hasActiveFilter
+                ? `${total} resultado${total !== 1 ? 's' : ''} encontrado${total !== 1 ? 's' : ''}`
+                : `${total} consulta${total !== 1 ? 's' : ''} no total`
+              : isLoading ? 'Carregando…' : 'Nenhuma consulta'}
+          </p>
         </div>
         {canCreateCM && (
           <Link to="/cms/new">
@@ -118,10 +137,8 @@ export function CMListPage() {
             onBlur={(e)  => { e.target.style.borderColor = '#e2e8f0'; e.target.style.backgroundColor = '#f8fafc'; e.target.style.boxShadow = 'none' }}
           >
             <option value="all">Todos os solicitantes</option>
-            {requesterOptions.map((requester) => (
-              <option key={requester.id} value={requester.id}>
-                {requester.fullName}
-              </option>
+            {(creators ?? []).map((c) => (
+              <option key={c.id} value={c.id}>{c.full_name}</option>
             ))}
           </select>
         </div>
@@ -153,13 +170,6 @@ export function CMListPage() {
         </div>
       </div>
 
-      {/* Results count */}
-      {search && (
-        <p style={{ fontSize: 12.5, color: '#64748b' }}>
-          {filtered.length} resultado{filtered.length !== 1 ? 's' : ''} para "{search}"
-        </p>
-      )}
-
       {/* List */}
       {isLoading ? (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 14 }}>
@@ -167,7 +177,7 @@ export function CMListPage() {
             <div key={i} className="animate-pulse" style={{ backgroundColor: '#fff', borderRadius: 12, border: '1px solid #e2e8f0', height: 148 }} />
           ))}
         </div>
-      ) : filtered.length === 0 ? (
+      ) : cms.length === 0 ? (
         <div style={{
           backgroundColor: '#fff',
           borderRadius: 12,
@@ -182,9 +192,9 @@ export function CMListPage() {
             <Inbox size={20} style={{ color: '#94a3b8' }} />
           </div>
           <p style={{ fontSize: 13, color: '#64748b' }}>
-            {allCMs?.length === 0 ? 'Nenhuma CM criada ainda' : 'Nenhuma CM encontrada com esses filtros'}
+            {hasActiveFilter ? 'Nenhuma CM encontrada com esses filtros' : 'Nenhuma CM criada ainda'}
           </p>
-          {canCreateCM && allCMs?.length === 0 && (
+          {canCreateCM && !hasActiveFilter && (
             <Link to="/cms/new" style={{ marginTop: '1rem' }}>
               <Button size="sm">
                 <Plus size={14} />
@@ -194,8 +204,68 @@ export function CMListPage() {
           )}
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 14 }}>
-          {filtered.map((cm) => <CMCard key={cm.id} cm={cm} />)}
+        <div style={{ opacity: isFetching ? 0.6 : 1, transition: 'opacity 0.15s' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 14 }}>
+            {cms.map((cm) => <CMCard key={cm.id} cm={cm} />)}
+          </div>
+        </div>
+      )}
+
+      {/* Pagination */}
+      {pageCount > 1 && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          backgroundColor: '#fff',
+          borderRadius: 12,
+          border: '1px solid #e2e8f0',
+          padding: '0.625rem 1rem',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+        }}>
+          <span style={{ fontSize: 12.5, color: '#64748b' }}>
+            {from}–{to} de {total}
+          </span>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <button
+              onClick={() => setPage((p) => p - 1)}
+              disabled={page === 0}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 4,
+                height: 32, padding: '0 10px',
+                fontSize: 12.5, fontWeight: 500, fontFamily: 'inherit',
+                borderRadius: 7, border: '1px solid #e2e8f0',
+                backgroundColor: page === 0 ? '#f8fafc' : '#fff',
+                color: page === 0 ? '#cbd5e1' : '#374151',
+                cursor: page === 0 ? 'not-allowed' : 'pointer',
+              }}
+            >
+              <ChevronLeft size={13} />
+              Anterior
+            </button>
+
+            <span style={{ fontSize: 12.5, color: '#64748b', padding: '0 8px' }}>
+              {page + 1} / {pageCount}
+            </span>
+
+            <button
+              onClick={() => setPage((p) => p + 1)}
+              disabled={page >= pageCount - 1}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 4,
+                height: 32, padding: '0 10px',
+                fontSize: 12.5, fontWeight: 500, fontFamily: 'inherit',
+                borderRadius: 7, border: '1px solid #e2e8f0',
+                backgroundColor: page >= pageCount - 1 ? '#f8fafc' : '#fff',
+                color: page >= pageCount - 1 ? '#cbd5e1' : '#374151',
+                cursor: page >= pageCount - 1 ? 'not-allowed' : 'pointer',
+              }}
+            >
+              Próxima
+              <ChevronRight size={13} />
+            </button>
+          </div>
         </div>
       )}
     </div>
