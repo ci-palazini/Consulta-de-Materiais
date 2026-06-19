@@ -3,6 +3,7 @@ export const CMStatus = {
   ClosedViable: 'closed_viable',
   ClosedNotViable: 'closed_not_viable',
   ClosedBySystem: 'closed_by_system',
+  Cancelled: 'cancelled',
 } as const
 
 export const CMAction = {
@@ -17,6 +18,7 @@ export const CMAction = {
   ContestResponse: 'contest_response',
   Finalized: 'finalized',
   AutoFinalized: 'auto_finalized',
+  Cancelled: 'cancelled',
 } as const
 
 export const CMWorkflowStage = {
@@ -26,6 +28,7 @@ export const CMWorkflowStage = {
   Contested:      'contested',
   Finalized:      'finalized',
   Refused:        'refused',
+  Cancelled:      'cancelled',
 } as const
 
 export const DepartmentSlug = {

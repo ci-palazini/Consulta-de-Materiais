@@ -82,7 +82,7 @@ export interface Notification {
   user_id: string
   cm_id: string
   cm_step_id: string | null
-  type: 'cm_assigned' | 'cm_finalized' | 'cm_returned' | 'cm_refused' | 'cm_contested' | 'cm_contest_response'
+  type: 'cm_assigned' | 'cm_finalized' | 'cm_returned' | 'cm_refused' | 'cm_contested' | 'cm_contest_response' | 'cm_cancelled'
   message: string
   read: boolean
   created_at: string

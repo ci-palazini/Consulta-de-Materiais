@@ -6,6 +6,7 @@ const STATUS_CONFIG: Record<CMStatusType, { label: string; variant: 'info' | 'su
   closed_viable:     { label: 'Viável',              variant: 'success' },
   closed_not_viable: { label: 'Não Viável',          variant: 'danger' },
   closed_by_system:  { label: 'Finalizado pelo Sistema', variant: 'default' },
+  cancelled:         { label: 'Cancelada',            variant: 'default' },
 }
 
 export function CMStatusBadge({ status }: { status: CMStatusType }) {

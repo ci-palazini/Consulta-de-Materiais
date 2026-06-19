@@ -8,7 +8,7 @@ export interface NotifyCMPayload {
   fromDeptName: string
   actorName: string
   notes?: string
-  eventType: 'created' | 'forwarded' | 'approved' | 'refused' | 'dispatched_parallel' | 'jumped' | 'contested' | 'contest_response'
+  eventType: 'created' | 'forwarded' | 'approved' | 'refused' | 'dispatched_parallel' | 'jumped' | 'contested' | 'contest_response' | 'cancelled'
   /** Quando definido, o email vai apenas para este usuário em vez de todo o departamento */
   toUserId?: string
   /** Emails adicionais que sempre recebem a notificação, independente do destinatário principal */
@@ -27,6 +27,7 @@ function buildBodyHtml(payload: NotifyCMPayload): string {
     jumped:            { accent: '#7c3aed', bg: '#ede9fe', color: '#6d28d9', label: 'Pulo de Etapa' },
     contested:         { accent: '#ea580c', bg: '#ffedd5', color: '#c2410c', label: 'Etapa Contestada' },
     contest_response:  { accent: '#0891b2', bg: '#cffafe', color: '#0e7490', label: 'Resposta à Contestação' },
+    cancelled:         { accent: '#64748b', bg: '#f1f5f9', color: '#475569', label: 'CM Cancelada' },
   }
   const c = colorMap[eventType] ?? colorMap.forwarded
   const accentColor = c.accent
@@ -127,6 +128,7 @@ export async function notifyCM(payload: NotifyCMPayload): Promise<void> {
       jumped:             'Pulo de Etapa',
       contested:          'Etapa Contestada',
       contest_response:   'Resposta à Contestação',
+      cancelled:          'CM Cancelada',
     }
     const prefix = prefixMap[payload.eventType] ?? 'CM'
     const eventLabel = `[${prefix}] ${payload.cm.number}: ${payload.cm.title} → ${payload.toDept.name}`

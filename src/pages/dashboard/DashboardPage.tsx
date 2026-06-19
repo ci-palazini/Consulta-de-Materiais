@@ -86,7 +86,7 @@ export function DashboardPage() {
   const pendingInMyDept = deptCMs || []
 
   const totalOpen   = allCMs?.filter((cm) => cm.status === 'open').length || 0
-  const totalClosed = allCMs?.filter((cm) => cm.status !== 'open').length || 0
+  const totalClosed = allCMs?.filter((cm) => cm.status !== 'open' && cm.status !== 'cancelled').length || 0
   const canCreateCM = profile?.department?.slug === 'vendas' || profile?.department?.slug === 'pricing'
   const firstName   = profile?.full_name?.split(' ')[0] || 'Usuário'
 

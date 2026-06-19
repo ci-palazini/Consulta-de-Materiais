@@ -10,13 +10,14 @@ import { DispatchParallelExistingModal } from '@/components/cm/DispatchParallelE
 import { FinalizeModal } from '@/components/cm/FinalizeModal'
 import { ContestModal } from '@/components/cm/ContestModal'
 import { RespondToContestModal } from '@/components/cm/RespondToContestModal'
+import { CancelModal } from '@/components/cm/CancelModal'
 import { AttachmentsSection } from '@/components/cm/AttachmentsSection'
 import {
   AlertCircle, ArrowLeft, CheckCircle, XCircle, GitBranch,
   CheckSquare, Flag, MessageSquare, User, Building2, Calendar, Hash, FileCheck,
-  Link, Pencil, X, Check
+  Link, Pencil, X, Check, Ban
 } from 'lucide-react'
-import { CMWorkflowStage, DepartmentSlug } from '@/types/enums'
+import { CMWorkflowStage, DepartmentSlug, UserRole } from '@/types/enums'
 import type { CMWithSteps } from '@/types/domain'
 import { useUpdateCMExtraFields } from '@/hooks/useUpdateCMExtraFields'
 
@@ -43,6 +44,7 @@ const ACTION_CONFIG: Record<string, { bg: string; label: string }> = {
   contest_response:     { bg: '#0891b2', label: '↩' },
   finalized:            { bg: '#16a34a', label: 'F' },
   auto_finalized:       { bg: '#64748b', label: '⏱' },
+  cancelled:            { bg: '#64748b', label: '⊘' },
 }
 
 const ACTION_LABEL: Record<string, string> = {
@@ -57,6 +59,7 @@ const ACTION_LABEL: Record<string, string> = {
   contest_response:    'Resposta à contestação',
   finalized:           'Finalizada',
   auto_finalized:      'Finalizado pelo sistema',
+  cancelled:           'Cancelada pelo criador',
 }
 
 // Suggested flow steps keyed by dept slug (null = parallel step)
@@ -107,6 +110,7 @@ function WorkflowMap({ cm }: { cm: CMWithSteps }) {
   const isFinalized = cm.workflow_stage === CMWorkflowStage.Finalized
   const isRefused   = cm.workflow_stage === CMWorkflowStage.Refused
   const isContested = cm.workflow_stage === CMWorkflowStage.Contested
+  const isCancelled = cm.workflow_stage === CMWorkflowStage.Cancelled
 
   let statusLabel = ''
   let statusColor = '#1d4ed8'
@@ -114,6 +118,7 @@ function WorkflowMap({ cm }: { cm: CMWithSteps }) {
   let statusBorder = '#bfdbfe'
 
   if (isFinalized) { statusLabel = 'Finalizada'; statusColor = '#15803d'; statusBg = '#f0fdf4'; statusBorder = '#bbf7d0' }
+  else if (isCancelled) { statusLabel = 'Cancelada'; statusColor = '#475569'; statusBg = '#f1f5f9'; statusBorder = '#e2e8f0' }
   else if (isRefused) { statusLabel = 'Recusada'; statusColor = '#b91c1c'; statusBg = '#fef2f2'; statusBorder = '#fecaca' }
   else if (isContested) { statusLabel = 'Contestação em andamento'; statusColor = '#c2410c'; statusBg = '#fff7ed'; statusBorder = '#fed7aa' }
   else if (cm.workflow_stage === CMWorkflowStage.Parallel) { statusLabel = 'Análise paralela'; statusColor = '#6d28d9'; statusBg = '#f5f3ff'; statusBorder = '#ddd6fe' }
@@ -338,6 +343,7 @@ export function CMDetailPage() {
   const [showFinalize,         setShowFinalize]          = useState(false)
   const [showContest,          setShowContest]           = useState(false)
   const [showRespondToContest, setShowRespondToContest]  = useState(false)
+  const [showCancel,           setShowCancel]            = useState(false)
 
   if (!number) return <NotFound />
 
@@ -385,6 +391,9 @@ export function CMDetailPage() {
 
     // Dept that was contested responds
     canRespondToContest: isOpen && stage === CMWorkflowStage.Contested && myDeptId === cm.current_dept_id,
+
+    // Creator (or an admin) can cancel the CM while it is still open
+    canCancel: isOpen && (profile?.id === cm.created_by || profile?.role === UserRole.Admin),
   }
 
   const hasAnyAction = Object.values(actions).some(Boolean)
@@ -483,6 +492,18 @@ export function CMDetailPage() {
               Responder Contestação
             </Button>
           )}
+
+          {actions.canCancel && (
+            <button
+              onClick={() => setShowCancel(true)}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '0.4rem 0.75rem', fontSize: 12.5, fontWeight: 500, borderRadius: 7, border: '1px solid #fecaca', background: '#fff', color: '#b91c1c', cursor: 'pointer', fontFamily: 'inherit', transition: 'background-color 0.15s' }}
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#fef2f2')}
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#fff')}
+            >
+              <Ban size={13} />
+              Cancelar CM
+            </button>
+          )}
         </div>
       )}
 
@@ -521,6 +542,16 @@ export function CMDetailPage() {
                     <span style={{ fontSize: 12.5, color: '#64748b', fontStyle: 'italic' }}>
                       Finalizado automaticamente pelo sistema após 5 dias sem movimentação
                     </span>
+                  </div>
+                ) : cm.status === 'cancelled' ? (
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: cm.finalization_notes ? '0.5rem' : 0 }}>
+                      <Ban size={15} style={{ color: '#64748b' }} />
+                      <h3 style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>CM cancelada pelo criador</h3>
+                    </div>
+                    {cm.finalization_notes && (
+                      <p style={{ fontSize: 13, color: '#64748b', fontStyle: 'italic' }}>"{cm.finalization_notes}"</p>
+                    )}
                   </div>
                 ) : (
                   <>
@@ -602,6 +633,7 @@ export function CMDetailPage() {
       {showFinalize         && profile && <FinalizeModal cm={cm} actorId={profile.id} onClose={() => setShowFinalize(false)} />}
       {showContest          && profile && <ContestModal  cm={cm} actorId={profile.id} onClose={() => setShowContest(false)} />}
       {showRespondToContest && profile && <RespondToContestModal cm={cm} actorId={profile.id} onClose={() => setShowRespondToContest(false)} />}
+      {showCancel           && profile && <CancelModal   cm={cm} actorId={profile.id} onClose={() => setShowCancel(false)} />}
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Bell, Check, CheckCheck, Clock, ArrowRight, FileCheck, XCircle, AlertTriangle, MessageSquare } from 'lucide-react'
+import { Bell, Check, CheckCheck, Clock, ArrowRight, FileCheck, XCircle, AlertTriangle, MessageSquare, Ban } from 'lucide-react'
 import { useNotifications } from '@/hooks/useNotifications'
 import { useNotificationStore } from '@/store/notificationStore'
 import { useAuth } from '@/hooks/useAuth'
@@ -13,6 +13,7 @@ const TYPE_CONFIG: Record<Notification['type'], { icon: React.ElementType; bg: s
   cm_refused:         { icon: XCircle,       bg: '#fef2f2', color: '#b91c1c' },
   cm_contested:       { icon: AlertTriangle, bg: '#fffbeb', color: '#b45309' },
   cm_contest_response:{ icon: MessageSquare, bg: '#f5f3ff', color: '#6d28d9' },
+  cm_cancelled:       { icon: Ban,           bg: '#f1f5f9', color: '#475569' },
 }
 
 function formatTimeAgo(dateStr: string): string {
