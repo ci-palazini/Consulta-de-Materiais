@@ -1,10 +1,11 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
-import { LayoutDashboard, FileText, List, Settings, LogOut, Menu, X, Plus, User } from 'lucide-react'
+import { LayoutDashboard, FileText, List, Settings, LogOut, Menu, X, Plus, User, BarChart3 } from 'lucide-react'
 import { useState, useCallback } from 'react'
 
 const NAV = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { path: '/metrics',   label: 'Métricas',  icon: BarChart3 },
   { path: '/cms',       label: 'Consultas',  icon: FileText },
   { path: '/open-cms',  label: 'Visão Rápida', icon: List },
 ]

@@ -30,6 +30,11 @@ const router = createBrowserRouter([
         HydrateFallback: LoadingFallback,
       },
       {
+        path: 'metrics',
+        lazy: () => import('./pages/dashboard/MetricsPage').then(m => ({ Component: m.MetricsPage })),
+        HydrateFallback: LoadingFallback,
+      },
+      {
         path: 'cms',
         lazy: () => import('./pages/cms/CMListPage').then(m => ({ Component: m.CMListPage })),
         HydrateFallback: LoadingFallback,
