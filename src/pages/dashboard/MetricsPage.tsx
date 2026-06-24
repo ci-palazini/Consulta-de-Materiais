@@ -123,47 +123,73 @@ function MonthlyChart({ monthly }: { monthly: { month: string; created: number; 
   )
 }
 
-function MembersGrid({ departments }: { departments: MetricsDepartment[] }) {
-  const ordered = [...departments].sort((a, b) => b.members.length - a.members.length)
+function DeptMembersCard({ d }: { d: MetricsDepartment }) {
+  const color = ACCENT[d.slug] ?? '#64748b'
+  const badge = DEPT_COLORS[d.slug] ?? 'bg-slate-500 text-white'
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 14 }}>
-      {ordered.map((d) => {
-        const color = ACCENT[d.slug] ?? '#64748b'
-        const badge = DEPT_COLORS[d.slug] ?? 'bg-slate-500 text-white'
-        return (
-          <Card key={d.id} style={{ padding: '1rem 1.125rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <span className={badge} style={{ fontSize: 12, fontWeight: 600, padding: '0.2rem 0.6rem', borderRadius: 999 }}>
-                {d.name}
-              </span>
-              <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>
-                {d.members.length} {d.members.length === 1 ? 'pessoa' : 'pessoas'}
-              </span>
-            </div>
-            {d.members.length === 0 ? (
-              <p style={{ fontSize: 12, color: '#94a3b8' }}>Sem membros cadastrados</p>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {d.members.map((p) => (
-                  <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <div style={{ width: 30, height: 30, borderRadius: '50%', backgroundColor: `${color}1a`, color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>
-                      {p.avatar_initials}
-                    </div>
-                    <div style={{ minWidth: 0 }}>
-                      <p style={{ fontSize: 13, fontWeight: 500, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {p.full_name}
-                        {p.role === 'admin' && <span style={{ fontSize: 9, fontWeight: 700, color: '#2563eb', backgroundColor: '#eff6ff', padding: '0.05rem 0.35rem', borderRadius: 4, marginLeft: 6, verticalAlign: 'middle' }}>ADMIN</span>}
-                      </p>
-                      <p style={{ fontSize: 11, color: '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.email}</p>
-                    </div>
-                  </div>
-                ))}
+    <Card style={{ padding: '1rem 1.125rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <span className={badge} style={{ fontSize: 12, fontWeight: 600, padding: '0.2rem 0.6rem', borderRadius: 999 }}>
+          {d.name}
+        </span>
+        <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>
+          {d.members.length} {d.members.length === 1 ? 'pessoa' : 'pessoas'}
+        </span>
+      </div>
+      {d.members.length === 0 ? (
+        <p style={{ fontSize: 12, color: '#94a3b8' }}>Sem membros cadastrados</p>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {d.members.map((p) => (
+            <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ width: 30, height: 30, borderRadius: '50%', backgroundColor: `${color}1a`, color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>
+                {p.avatar_initials}
               </div>
-            )}
-          </Card>
-        )
-      })}
-    </div>
+              <div style={{ minWidth: 0 }}>
+                <p style={{ fontSize: 13, fontWeight: 500, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {p.full_name}
+                  {p.role === 'admin' && <span style={{ fontSize: 9, fontWeight: 700, color: '#2563eb', backgroundColor: '#eff6ff', padding: '0.05rem 0.35rem', borderRadius: 4, marginLeft: 6, verticalAlign: 'middle' }}>ADMIN</span>}
+                </p>
+                <p style={{ fontSize: 11, color: '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.email}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
+  )
+}
+
+function MembersGrid({ departments }: { departments: MetricsDepartment[] }) {
+  // Vendas tem muito mais gente — vai fixa numa coluna alta à direita;
+  // os demais departamentos quebram em cards menores à esquerda.
+  const pinned = departments.find((d) => d.slug === 'vendas')
+  const rest = departments
+    .filter((d) => d.slug !== 'vendas')
+    .sort((a, b) => b.members.length - a.members.length)
+
+  return (
+    <>
+      <style>{`
+        .members-layout { display: flex; gap: 14px; align-items: flex-start; }
+        .members-rest { flex: 1; min-width: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; align-content: start; }
+        .members-pinned { width: 300px; flex-shrink: 0; }
+        @media (max-width: 900px) {
+          .members-layout { flex-direction: column; }
+          .members-pinned { width: 100%; order: -1; }
+        }
+      `}</style>
+      <div className="members-layout">
+        <div className="members-rest">
+          {rest.map((d) => <DeptMembersCard key={d.id} d={d} />)}
+        </div>
+        {pinned && (
+          <div className="members-pinned">
+            <DeptMembersCard d={pinned} />
+          </div>
+        )}
+      </div>
+    </>
   )
 }
 
