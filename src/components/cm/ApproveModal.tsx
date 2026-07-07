@@ -14,10 +14,12 @@ interface ApproveModalProps {
   actorId: string
   /** If true, calls approve_parallel_branch instead of approve_cm */
   isParallel?: boolean
+  /** Overrides the modal title and submit label (e.g. "Encaminhar" when Vendas forwards from finalization) */
+  title?: string
   onClose: () => void
 }
 
-export function ApproveModal({ cm, actorId, isParallel = false, onClose }: ApproveModalProps) {
+export function ApproveModal({ cm, actorId, isParallel = false, title = 'Aprovar', onClose }: ApproveModalProps) {
   const approveMutation         = useApproveCM()
   const approveParallelMutation = useApproveParallelBranch()
   const { profile }             = useAuth()
@@ -87,7 +89,7 @@ export function ApproveModal({ cm, actorId, isParallel = false, onClose }: Appro
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem 1.5rem', borderBottom: '1px solid #e2e8f0' }}>
           <div>
-            <h3 style={{ fontSize: 15, fontWeight: 600, color: '#0f172a' }}>Aprovar</h3>
+            <h3 style={{ fontSize: 15, fontWeight: 600, color: '#0f172a' }}>{title}</h3>
             <p style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>{cm.number} · {cm.title}</p>
           </div>
           <button
@@ -168,7 +170,7 @@ export function ApproveModal({ cm, actorId, isParallel = false, onClose }: Appro
             </Button>
             <Button type="submit" variant="success" isLoading={isPending}>
               <CheckCircle size={14} />
-              Aprovar
+              {title}
             </Button>
           </div>
         </form>

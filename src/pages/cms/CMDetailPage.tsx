@@ -15,7 +15,7 @@ import { AttachmentsSection } from '@/components/cm/AttachmentsSection'
 import {
   AlertCircle, ArrowLeft, CheckCircle, XCircle, GitBranch,
   CheckSquare, Flag, MessageSquare, User, Building2, Calendar, Hash, FileCheck,
-  Link, Pencil, X, Check, Ban
+  Link, Pencil, X, Check, Ban, Send
 } from 'lucide-react'
 import { CMWorkflowStage, DepartmentSlug, UserRole } from '@/types/enums'
 import type { CMWithSteps } from '@/types/domain'
@@ -341,6 +341,7 @@ export function CMDetailPage() {
   const [showRefuseParallel,   setShowRefuseParallel]    = useState(false)
   const [showDispatchParallel, setShowDispatchParallel]  = useState(false)
   const [showFinalize,         setShowFinalize]          = useState(false)
+  const [showForwardFinalize,  setShowForwardFinalize]   = useState(false)
   const [showContest,          setShowContest]           = useState(false)
   const [showRespondToContest, setShowRespondToContest]  = useState(false)
   const [showCancel,           setShowCancel]            = useState(false)
@@ -388,6 +389,10 @@ export function CMDetailPage() {
       (isOpen && stage === CMWorkflowStage.VendasFinalize) ||
       stage === CMWorkflowStage.Refused
     ),
+
+    // Vendas can forward to a missing dept instead of finalizing, if the CM
+    // reached them before every needed dept had a chance to weigh in
+    canForwardFinalize: iHoldTheCM && stage === CMWorkflowStage.VendasFinalize && mySlug === DepartmentSlug.Vendas,
 
     // Dept that was contested responds
     canRespondToContest: isOpen && stage === CMWorkflowStage.Contested && myDeptId === cm.current_dept_id,
@@ -483,6 +488,12 @@ export function CMDetailPage() {
             <Button variant="secondary" size="sm" onClick={() => setShowContest(true)}>
               <Flag size={13} />
               Contestar Etapa
+            </Button>
+          )}
+          {actions.canForwardFinalize && (
+            <Button variant="secondary" size="sm" onClick={() => setShowForwardFinalize(true)}>
+              <Send size={13} />
+              Encaminhar para Depto.
             </Button>
           )}
 
@@ -631,6 +642,7 @@ export function CMDetailPage() {
       {showRefuseParallel   && profile && <RefuseModal  cm={cm} actorId={profile.id} isParallel onClose={() => setShowRefuseParallel(false)} />}
       {showDispatchParallel && profile && <DispatchParallelExistingModal cm={cm} actorId={profile.id} onClose={() => setShowDispatchParallel(false)} />}
       {showFinalize         && profile && <FinalizeModal cm={cm} actorId={profile.id} onClose={() => setShowFinalize(false)} />}
+      {showForwardFinalize  && profile && <ApproveModal cm={cm} actorId={profile.id} title="Encaminhar" onClose={() => setShowForwardFinalize(false)} />}
       {showContest          && profile && <ContestModal  cm={cm} actorId={profile.id} onClose={() => setShowContest(false)} />}
       {showRespondToContest && profile && <RespondToContestModal cm={cm} actorId={profile.id} onClose={() => setShowRespondToContest(false)} />}
       {showCancel           && profile && <CancelModal   cm={cm} actorId={profile.id} onClose={() => setShowCancel(false)} />}
